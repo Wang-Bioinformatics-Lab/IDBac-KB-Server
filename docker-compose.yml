@@ -1,0 +1,57 @@
+version: '3'
+services:
+  idbac-kb-dash:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: idbac-kb-dash
+    volumes:
+      - ./logs:/app/logs:rw
+    ports:
+    - "5391:5000"
+    networks:
+      - default
+      - nginx-net
+    restart: unless-stopped
+    command: /app/run_server.sh
+    environment:
+      VIRTUAL_HOST: idbac-kb.gnps2.org
+      VIRTUAL_PORT: 5000
+      LETSENCRYPT_HOST: idbac-kb.gnps2.org
+      LETSENCRYPT_EMAIL: mwang87@gmail.com
+
+  idbac-kb-worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: idbac-kb-worker
+    volumes:
+      - ./logs:/app/logs:rw
+    command: /app/run_worker.sh
+    restart: unless-stopped
+    depends_on: 
+      - idbac-kb-redis
+      - idbac-kb-rabbitmq
+    networks:
+      - default
+      - nginx-net
+
+  idbac-kb-rabbitmq:
+    container_name: idbac-kb-rabbitmq
+    image: rabbitmq
+    restart: unless-stopped
+    networks:
+      - default
+
+  idbac-kb-redis:
+    container_name: idbac-kb-redis
+    image: redis
+    restart: unless-stopped
+    networks:
+      - default
+
+
+networks:
+  nginx-net:
+    external:
+      name: nginx-net

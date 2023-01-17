@@ -1,0 +1,16 @@
+Flask
+gunicorn
+plotly
+pandas
+requests
+tqdm
+Werkzeug
+Flask-Caching
+dash
+dash-bootstrap-components
+dash-core-components
+dash-html-components
+dash-renderer
+dash-table
+celery==5.0.5
+celery_once==3.0.1
