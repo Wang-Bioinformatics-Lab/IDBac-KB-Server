@@ -23,8 +23,12 @@ import urllib
 import json
 
 from collections import defaultdict
+from dotenv import dotenv_values, load_dotenv
+
 
 from flask_caching import Cache
+from flask import request
+
 import tasks
 
 server = Flask(__name__)
@@ -38,8 +42,7 @@ cache = Cache(app.server, config={
     'CACHE_THRESHOLD': 10000
 })
 
-# Get environment variable
-CREDENTIALSKEY = os.environ.get('CREDENTIALSKEY', None)
+_env = dotenv_values()
 
 server = app.server
 
@@ -82,25 +85,10 @@ NAVBAR = dbc.Navbar(
 )
 
 DATASELECTION_CARD = [
-    dbc.CardHeader(html.H5("Data Selection")),
+    dbc.CardHeader(html.H5("IDBac KB Spectra List")),
     dbc.CardBody(
         [   
-            html.H5(children='Data Selection'),
-            dbc.InputGroup(
-                [
-                    dbc.InputGroupText("Spectrum USI"),
-                    dbc.Input(id='usi1', placeholder="Enter GNPS USI", value=""),
-                ],
-                className="mb-3",
-            ),
-            html.Hr(),
-            dbc.InputGroup(
-                [
-                    dbc.InputGroupText("Spectrum USI"),
-                    dbc.Input(id='usi2', placeholder="Enter GNPS USI", value=""),
-                ],
-                className="mb-3",
-            ),
+            html.Div(id="displaycontent")
         ]
     )
 ]
@@ -160,15 +148,17 @@ BODY = dbc.Container(
         dbc.Row([
             dbc.Col(
                 dbc.Card(LEFT_DASHBOARD),
+                className="w-100"
+            ),
+        ], style={"marginTop": 30}),
+        dbc.Row([
+            dbc.Col(
+                html.Div(),
                 className="w-50"
             ),
             dbc.Col(
                 [
-                    dbc.Card(MIDDLE_DASHBOARD),
-                    html.Br(),
                     dbc.Card(CONTRIBUTORS_DASHBOARD),
-                    html.Br(),
-                    dbc.Card(EXAMPLES_DASHBOARD)
                 ],
                 className="w-50"
             ),
@@ -184,56 +174,49 @@ def _get_url_param(param_dict, key, default):
     return param_dict.get(key, [default])[0]
 
 @app.callback([
-                Output('usi1', 'value'), 
-                Output('usi2', 'value'), 
+                Output('displaycontent', 'children')
               ],
               [Input('url', 'search')])
-def determine_task(search):
+def display_table(search):
+    summary_df = pd.read_csv("database/summary.tsv", sep="\t")
+
+    # Creating plotly dash table
+    table = dash_table.DataTable(
+        id='table',
+        columns=[{"name": i, "id": i} for i in summary_df.columns],
+        data=summary_df.to_dict('records'),
+        page_size=10)
     
-    try:
-        query_dict = urllib.parse.parse_qs(search[1:])
-    except:
-        query_dict = {}
+    return [[table]]
 
-    usi1 = _get_url_param(query_dict, "usi1", 'mzspec:MSV000082796:KP_108_Positive:scan:1974')
-    usi2 = _get_url_param(query_dict, "usi2", 'mzspec:MSV000082796:KP_108_Positive:scan:1977')
-
-    return [usi1, usi2]
-
-
-
-@app.callback([
-                Output('output', 'children')
-              ],
-              [
-                  Input('usi1', 'value'),
-                  Input('usi2', 'value'),
-            ])
-def draw_output(usi1, usi2):
-    result = tasks.task_computeheartbeat.delay()
-    result.get()
-
-    return [usi1+usi2+"task up"]
 
 # API
 @server.route("/api")
 def api():
     return "Up"
 
-@server.route("/api/entry", methods=["POST"])
+@server.route("/api/spectrum", methods=["POST"])
 def deposit():
     # Check the API credentials
-    assert(CREDENTIALSKEY is not None)
-    request_credentials = request.get("CREDENTIALSKEY")
+    assert("CREDENTIALSKEY" in _env)
+    request_credentials = request.values.get("CREDENTIALSKEY")
 
-    if request_credentials != CREDENTIALSKEY:
+    if request_credentials != _env["CREDENTIALSKEY"]:
         return "Invalid Credentials", 403
 
+    # Getting all the parameter arguments
+    all_parameters = list(request.values.keys())
+
+    spectrum_dict = json.loads(request.values.get("spectrum_json"))
+    spectrum_dict["task"] = request.values.get("task")
+    spectrum_dict["user"] = request.values.get("user")
+
     # Saving the results here
-    tasks.task_deposit_data({})
+    task_result = tasks.task_deposit_data.delay(spectrum_dict)
+    task_result.get()
 
     # Calling task to summarize and update the catalog
-    
+    tasks.task_summarize_depositions.delay()
 
     # Enable this call to be blocking
     return "STUFF"
