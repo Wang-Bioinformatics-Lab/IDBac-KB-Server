@@ -23,14 +23,13 @@ import urllib
 import json
 
 from collections import defaultdict
-import uuid
 
 from flask_caching import Cache
 import tasks
 
 server = Flask(__name__)
 app = dash.Dash(__name__, server=server, external_stylesheets=[dbc.themes.BOOTSTRAP])
-app.title = 'Wang Lab - Dashboard Template'
+app.title = 'Wang Lab - IDBac KB'
 
 cache = Cache(app.server, config={
     'CACHE_TYPE': 'filesystem',
@@ -38,6 +37,9 @@ cache = Cache(app.server, config={
     'CACHE_DEFAULT_TIMEOUT': 0,
     'CACHE_THRESHOLD': 10000
 })
+
+# Get environment variable
+CREDENTIALSKEY = os.environ.get('CREDENTIALSKEY', None)
 
 server = app.server
 
@@ -221,10 +223,17 @@ def api():
 @server.route("/api/entry", methods=["POST"])
 def deposit():
     # Check the API credentials
+    assert(CREDENTIALSKEY is not None)
+    request_credentials = request.get("CREDENTIALSKEY")
+
+    if request_credentials != CREDENTIALSKEY:
+        return "Invalid Credentials", 403
 
     # Saving the results here
+    tasks.task_deposit_data({})
 
     # Calling task to summarize and update the catalog
+    
 
     # Enable this call to be blocking
     return "STUFF"
