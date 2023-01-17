@@ -70,7 +70,7 @@ NAVBAR = dbc.Navbar(
         ),
         dbc.Nav(
             [
-                dbc.NavItem(dbc.NavLink("Wang Bioinformatics Lab - Template Dashboard - Version 0.1", href="#")),
+                dbc.NavItem(dbc.NavLink("Wang Bioinformatics Lab - IDBac Knowledgebase - Version 0.1", href="#")),
             ],
         navbar=True)
     ],
