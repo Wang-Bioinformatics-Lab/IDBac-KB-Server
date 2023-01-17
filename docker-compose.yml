@@ -7,6 +7,7 @@ services:
     container_name: idbac-kb-dash
     volumes:
       - ./logs:/app/logs:rw
+      - ./database:/app/database:ro
     ports:
     - "5392:5000"
     networks:
@@ -27,6 +28,7 @@ services:
     container_name: idbac-kb-worker
     volumes:
       - ./logs:/app/logs:rw
+      - ./database:/app/database:rw
     command: /app/run_worker.sh
     restart: unless-stopped
     depends_on: 
