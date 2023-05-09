@@ -219,7 +219,23 @@ def deposit():
     tasks.task_summarize_depositions.delay()
 
     # Enable this call to be blocking
-    return "STUFF"
+    return "DONE"
+
+@server.route("/api/spectrum", methods=["GET"])
+def download():
+    # Getting a single spectrum
+    database_id = request.values.get("database_id")
+
+    # send back the file
+    return send_from_directory("database/depositions", database_id + ".json")
+
+@server.route("/api/spectra", methods=["GET"])
+def spectra_list():
+    # Parse summary
+    summary_df = pd.read_csv("database/summary.tsv", sep="\t")
+
+    # return json
+    return summary_df.to_json(orient="records")
 
 if __name__ == "__main__":
     app.run_server(debug=True, port=5000, host="0.0.0.0")
