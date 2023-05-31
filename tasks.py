@@ -14,10 +14,15 @@ def task_computeheartbeat():
     return "Up"
 
 @celery_instance.task(time_limit=60)
-def task_deposit_data(deposit_dict):
+def task_deposit_data(deposit_dict, collection_name):
     print("Deposition", file=sys.stderr, flush=True)
 
-    output_filename = os.path.join("database/depositions", str(ULID()) + ".json")
+    task = deposit_dict["task"]
+
+    deposition_folder = os.path.join("database/depositions", "TASK-" + task)
+    os.makedirs(deposition_folder, exist_ok=True)
+
+    output_filename = os.path.join(deposition_folder, str(ULID()) + ".json")
 
     with open(output_filename, "w") as f:
         f.write(json.dumps(deposit_dict))
@@ -28,7 +33,7 @@ def task_deposit_data(deposit_dict):
 def task_summarize_depositions():
     print("Summarize", file=sys.stderr, flush=True)
 
-    all_json_entries = glob.glob("database/depositions/*.json")
+    all_json_entries = glob.glob("database/depositions/**/*.json", recursive=True)
     
     spectra_list = []
 
@@ -40,7 +45,7 @@ def task_summarize_depositions():
 
     # Summarizing
     for spectrum_obj in spectra_list:
-        spectrum_obj.pop("peaks", None)
+        spectrum_obj.pop("spectrum", None)
 
     df = pd.DataFrame(spectra_list)
 
