@@ -21,6 +21,7 @@ import numpy as np
 from tqdm import tqdm
 import urllib
 import json
+import glob
 
 from collections import defaultdict
 from dotenv import dotenv_values, load_dotenv
@@ -226,8 +227,17 @@ def download():
     # Getting a single spectrum
     database_id = request.values.get("database_id")
 
-    # send back the file
-    return send_from_directory("database/depositions", database_id + ".json")
+    # Finding all the database files
+    database_files = glob.glob("database/depositions/**/{}.json".format(os.path.basename(database_id)))
+
+    if len(database_files) == 0:
+        return "File not found", 404
+    
+    if len(database_files) > 1:
+        return "Multiple files found", 500
+    
+    return send_from_directory(os.path.dirname(database_files[0]), os.path.basename(database_files[0]))
+
 
 @server.route("/api/spectra", methods=["GET"])
 def spectra_list():
