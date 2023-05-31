@@ -212,7 +212,7 @@ def deposit():
     spectrum_dict["user"] = request.values.get("user")
 
     # Saving the results here
-    task_result = tasks.task_deposit_data.delay(spectrum_dict)
+    task_result = tasks.task_deposit_data.delay(spectrum_dict, None)
     task_result.get()
 
     # Calling task to summarize and update the catalog
