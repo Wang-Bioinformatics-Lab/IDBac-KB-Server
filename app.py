@@ -71,7 +71,7 @@ app.index_string = """<!DOCTYPE html>
 NAVBAR = dbc.Navbar(
     children=[
         dbc.NavbarBrand(
-            html.Img(src="https://gnps-cytoscape.ucsd.edu/static/img/GNPS_logo.png", width="120px"),
+            html.Img(src="https://gnps2.org/static/img/logo.png", width="120px"),
             href="https://mingxunwang.com"
         ),
         dbc.Nav(
@@ -186,7 +186,9 @@ def display_table(search):
         id='table',
         columns=[{"name": i, "id": i} for i in summary_df.columns],
         data=summary_df.to_dict('records'),
-        page_size=10)
+        page_size=10,
+        sort_action='native',
+        filter_action='native')
     
     return [[table]]
 
