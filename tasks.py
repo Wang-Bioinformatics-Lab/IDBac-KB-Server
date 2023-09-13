@@ -51,6 +51,8 @@ def task_summarize_depositions():
     # Summarizing
     df = pd.DataFrame(spectra_list)
 
+    # TODO: we can go and get Taxonomy information from the NCBI API
+
     # Saving the summary
     df.to_csv("database/summary.tsv", index=False, sep="\t")
 
