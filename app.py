@@ -188,7 +188,9 @@ def display_table(search):
         data=summary_df.to_dict('records'),
         page_size=10,
         sort_action='native',
-        filter_action='native')
+        filter_action='native',
+        export_format='xlsx',
+        export_headers='display')
     
     return [[table]]
 
@@ -197,6 +199,13 @@ def display_table(search):
 @server.route("/api")
 def api():
     return "Up"
+
+@server.route("/api/database/refresh", methods=["GET"])
+def refresh():
+    # Calling task to summarize and update the catalog
+    tasks.task_summarize_depositions.delay()
+
+    return "Refreshing"
 
 @server.route("/api/spectrum", methods=["POST"])
 def deposit():

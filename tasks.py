@@ -29,7 +29,7 @@ def task_deposit_data(deposit_dict, collection_name):
 
     return "Done"
 
-@celery_instance.task(time_limit=60)
+@celery_instance.task(time_limit=600)
 def task_summarize_depositions():
     print("Summarize", file=sys.stderr, flush=True)
 
@@ -38,6 +38,7 @@ def task_summarize_depositions():
     spectra_list = []
 
     for json_filename in all_json_entries:
+        print(json_filename, file=sys.stderr, flush=True)
         with open(json_filename, "r") as f:
             entry = json.loads(f.read())
             entry["database_id"] = os.path.basename(json_filename).replace(".json", "")
