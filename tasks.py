@@ -42,12 +42,13 @@ def task_summarize_depositions():
         with open(json_filename, "r") as f:
             entry = json.loads(f.read())
             entry["database_id"] = os.path.basename(json_filename).replace(".json", "")
+
+            # Drop all the peaks to save memory
+            spectrum_obj.pop("spectrum", None)
+
             spectra_list.append(entry)
 
     # Summarizing
-    for spectrum_obj in spectra_list:
-        spectrum_obj.pop("spectrum", None)
-
     df = pd.DataFrame(spectra_list)
 
     # Saving the summary
