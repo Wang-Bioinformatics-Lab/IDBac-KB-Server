@@ -29,6 +29,7 @@ services:
     volumes:
       - ./logs:/app/logs:rw
       - ./database:/app/database:rw
+      - ./workflows:/app/workflows:rw
     command: /app/run_worker.sh
     restart: unless-stopped
     depends_on: 

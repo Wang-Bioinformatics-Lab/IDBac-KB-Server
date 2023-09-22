@@ -57,7 +57,7 @@ def task_summarize_depositions():
     df.to_csv("database/summary.tsv", index=False, sep="\t")
 
     # Now we'll call the NextFlow Script
-    cmd = "nextflow run workflows/idbac_summarize_database/nf_workflow.nf --input_database database/depositions"
+    cmd = "nextflow run /app/workflows/idbac_summarize_database/nf_workflow.nf --input_database database/depositions"
     os.system(cmd)
 
     return "Done"
