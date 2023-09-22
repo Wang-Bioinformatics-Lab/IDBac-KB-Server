@@ -1,0 +1,80 @@
+import sys
+import os
+import glob
+import argparse
+import pandas as pd
+import requests
+import json
+from psims.mzml.writer import MzMLWriter
+
+
+def main():
+    parser = argparse.ArgumentParser(description='Formatting the entire Database.')
+    parser.add_argument('input_json_folder')
+    parser.add_argument('output_library_json')
+    parser.add_argument('output_library_scan_mapping_txt')
+    parser.add_argument('output_library_mzml')
+
+    args = parser.parse_args()
+
+    # Now we'll iterate and get each individual spectrum
+    output_spectra_list = []
+
+    # Getting all input json files in the glob
+    all_json_entries = glob.glob(os.path.join(args.input_json_folder, "**/*.json"), recursive=True)
+    print(all_json_entries)
+
+    for json_filename in all_json_entries:
+        database_id = os.path.basename(json_filename).replace(".json", "")
+        spectrum_dict = json.loads(open(json_filename, "r").read())
+        spectrum_dict["database_id"] = database_id
+
+        # add to json list
+        output_spectra_list.append(spectrum_dict)
+
+    # Saving mzML
+    output_scan_mapping = []
+    with MzMLWriter(open(args.output_library_mzml, 'wb'), close=True) as out:
+        # Add default controlled vocabularies
+        out.controlled_vocabularies()
+        with out.run(id="my_analysis"):
+            with out.spectrum_list(count=len(output_spectra_list)):
+                scan = 1
+                for spectrum in output_spectra_list:
+                    # getting the mz peaks
+                    spectrum_list = spectrum["spectrum"]
+
+                    for peaks in spectrum_list:
+                        # unzip
+                        mz_array = [x[0] for x in peaks]
+                        intensity_array = [x[1] for x in peaks]
+
+                        out.write_spectrum(
+                            mz_array, intensity_array,
+                            id="scan={}".format(scan), params=[
+                                "MS1 Spectrum",
+                                {"ms level": 1},
+                                {"total ion current": sum(intensity_array)}
+                            ])
+                        
+                        # Creating scan mapping dict
+                        scan_mapping_dict = {}
+                        scan_mapping_dict["scan"] = scan
+                        scan_mapping_dict["database_id"] = spectrum["database_id"]
+
+                        output_scan_mapping.append(scan_mapping_dict)
+                    
+                        scan += 1
+
+    # Saving JSON
+    with open(args.output_library_json, "w") as output_file:
+        json.dump(output_spectra_list, output_file, indent=4)
+
+    # Saving scan mapping
+    scan_mapping_df = pd.DataFrame(output_scan_mapping)
+    scan_mapping_df.to_csv(args.output_library_scan_mapping_txt, sep="\t", index=False)
+
+    
+
+if __name__ == '__main__':
+    main()

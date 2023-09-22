@@ -1,0 +1,70 @@
+workflowname: idbac_analysis_workflow
+workflowdescription: idbac_analysis_workflow
+workflowlongdescription: This is a idbac analysis nextflow workflow for GNPS2
+workflowversion: "0.2"
+workflowfile: nf_workflow.nf
+workflowautohide: false
+adminonly: false
+#This maps the parameters from an input form to those that will appear in nextflow
+parameterlist:
+    - displayname: File Selection
+      paramtype: section
+
+    - displayname: Input Data Folder
+      paramtype: fileselector
+      nf_paramname: input_spectra_folder
+      formplaceholder: Enter the path to data
+      formvalue: ""
+      targettaskfolder: input_spectra
+      optional: false
+      selectsinglefile: false
+      folderunroll: true
+
+    - displayname: Input Metadata File
+      paramtype: fileselector
+      nf_paramname: input_metadata_file
+      formplaceholder: Enter the path to data
+      formvalue: ""
+      targettaskfolder: input_metadata_file
+      optional: true
+      selectsinglefile: true
+      folderunroll: true
+
+    - displayname: Parameters
+      paramtype: section
+
+    - displayname: Merge Replicates
+      paramtype: select
+      nf_paramname: merge_replicates
+      formvalue: "Yes"
+      options:
+        - value: "No"
+          display: "No"
+        - value: "Yes"
+          display: "Yes"
+
+    - displayname: Similarity Method
+      paramtype: select
+      nf_paramname: similarity
+      formvalue: "presence"
+      options:
+        - value: "presence"
+          display: "presence"
+        - value: "cosine"
+          display: "cosine"
+        - value: "euclidean"
+          display: "euclidean"
+
+    - displayname: Database Search Threshold
+      paramtype: text
+      nf_paramname: database_search_threshold
+      formplaceholder: Enter the Database Search Threshold
+      formvalue: "0.7"
+      tooltip: "database_search_threshold"
+
+    - displayname: Metadata Colum to Display
+      paramtype: text
+      nf_paramname: metadata_column
+      formplaceholder: Enter the metadata_column
+      formvalue: "None"
+      tooltip: "Pick the column in your metadata you want to visualize"
