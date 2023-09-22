@@ -48,7 +48,7 @@ process baselineCorrection2 {
     """
 }
 
-process databaseSearch {
+process mergeSpectra {
     publishDir "./nf_output", mode: 'copy'
 
     conda "$TOOL_FOLDER/conda_env.yml"
@@ -59,14 +59,18 @@ process databaseSearch {
 
     output:
     file 'output_database.mgf' optional true
+    file 'output_mapping.tsv' optional true
 
     """
     python $TOOL_FOLDER/merge_spectra.py \
     $idbac_database_mzML \
     $idbac_database_scan_mapping \
-    output_database.mgf
+    output_database.mgf \
+    output_mapping.tsv
     """
 }
+
+// TODO: We need to merge the full summary with the scan mapping so we know the scan number to show in the summary
 
 workflow {
     database_folder_ch = Channel.fromPath(params.input_database)
@@ -78,5 +82,5 @@ workflow {
     baseline_corrected_database_mzML_ch = baselineCorrection2(output_idbac_mzML_ch)
 
     // Merging the database spectra
-    output_database_mzML = mergeSpectra(baseline_corrected_database_mzML_ch, output_scan_mapping_ch)
+    mergeSpectra(baseline_corrected_database_mzML_ch, output_scan_mapping_ch)
 }

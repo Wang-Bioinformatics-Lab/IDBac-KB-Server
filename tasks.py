@@ -44,7 +44,7 @@ def task_summarize_depositions():
             entry["database_id"] = os.path.basename(json_filename).replace(".json", "")
 
             # Drop all the peaks to save memory
-            spectrum_obj.pop("spectrum", None)
+            entry.pop("spectrum", None)
 
             spectra_list.append(entry)
 
