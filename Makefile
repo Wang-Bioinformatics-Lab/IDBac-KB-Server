@@ -20,4 +20,4 @@ server-compose-production:
 	docker-compose --compatibility up -d
 
 attach:
-	docker exec -i -t gnpslcms-dash /bin/bash
+	docker exec -i -t idbac-kb-worker /bin/bash
