@@ -60,6 +60,8 @@ def task_summarize_depositions():
     cmd = "nextflow run /app/workflows/idbac_summarize_database/nf_workflow.nf --input_database database/depositions"
     os.system(cmd)
 
+    # Then we need to copy the files back from the right location
+
     return "Done"
 
 # celery_instance.conf.beat_schedule = {
