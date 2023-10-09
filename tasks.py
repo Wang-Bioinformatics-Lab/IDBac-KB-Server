@@ -64,7 +64,7 @@ def task_summarize_depositions():
 
     # Now we'll call the NextFlow Script
 
-    cmd = "cd /app/workflows/idbac_summarize_database/ && nextflow run /app/workflows/idbac_summarize_database/nf_workflow.nf --input_database database/depositions"
+    cmd = "cd /app/workflows/idbac_summarize_database/ && nextflow run /app/workflows/idbac_summarize_database/nf_workflow.nf --input_database /app/database/depositions"
     os.system(cmd)
 
     # Then we need to copy the files back from the right location
