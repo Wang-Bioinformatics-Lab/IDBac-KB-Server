@@ -58,13 +58,13 @@ def task_summarize_depositions():
 
     # Trying to cleanup the work folder
     try:
-        os.system("rm -rf work")
+        os.system("rm -rf /app/workflows/idbac_summarize_database/work")
     except:
         pass
 
     # Now we'll call the NextFlow Script
 
-    cmd = "nextflow run /app/workflows/idbac_summarize_database/nf_workflow.nf --input_database database/depositions"
+    cmd = "cd /app/workflows/idbac_summarize_database/ && nextflow run /app/workflows/idbac_summarize_database/nf_workflow.nf --input_database database/depositions"
     os.system(cmd)
 
     # Then we need to copy the files back from the right location
