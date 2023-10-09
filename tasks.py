@@ -56,12 +56,18 @@ def task_summarize_depositions():
     # Saving the summary
     df.to_csv("database/summary.tsv", index=False, sep="\t")
 
+    # Trying to cleanup the work folder
+    try:
+        os.system("rm -rf work")
+    except:
+        pass
+
     # Now we'll call the NextFlow Script
+
     cmd = "nextflow run /app/workflows/idbac_summarize_database/nf_workflow.nf --input_database database/depositions"
     os.system(cmd)
 
     # Then we need to copy the files back from the right location
-
     return "Done"
 
 # celery_instance.conf.beat_schedule = {

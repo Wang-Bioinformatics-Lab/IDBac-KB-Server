@@ -89,7 +89,19 @@ DATASELECTION_CARD = [
     dbc.CardHeader(html.H5("IDBac KB Spectra List")),
     dbc.CardBody(
         [   
-            html.Div(id="displaycontent")
+            html.Div([
+                dash_table.DataTable(
+                    id='displaytable',
+                    columns=[],
+                    data=[],
+                    row_selectable='single',
+                    page_size=10,
+                    sort_action='native',
+                    filter_action='native',
+                    export_format='xlsx',
+                    export_headers='display')
+            ],
+            id="displaycontent")
         ]
     )
 ]
@@ -154,7 +166,9 @@ BODY = dbc.Container(
         ], style={"marginTop": 30}),
         dbc.Row([
             dbc.Col(
-                html.Div(),
+                [
+                    dbc.Card(MIDDLE_DASHBOARD),
+                ],
                 className="w-50"
             ),
             dbc.Col(
@@ -175,24 +189,68 @@ def _get_url_param(param_dict, key, default):
     return param_dict.get(key, [default])[0]
 
 @app.callback([
-                Output('displaycontent', 'children')
+                Output('displaytable', 'data'),
+                Output('displaytable', 'columns')
               ],
               [Input('url', 'search')])
 def display_table(search):
     summary_df = pd.read_csv("database/summary.tsv", sep="\t")
 
-    # Creating plotly dash table
-    table = dash_table.DataTable(
-        id='table',
-        columns=[{"name": i, "id": i} for i in summary_df.columns],
-        data=summary_df.to_dict('records'),
-        page_size=10,
-        sort_action='native',
-        filter_action='native',
-        export_format='xlsx',
-        export_headers='display')
+    columns = [{"name": i, "id": i} for i in summary_df.columns]
+    data = summary_df.to_dict('records')
     
-    return [[table]]
+    return [data, columns]
+
+
+# We will plot spectra based on which row is selected in the table
+@app.callback(
+    Output('output', 'children'),
+    [   
+        Input('displaytable', 'derived_virtual_data'),
+        Input('displaytable', 'derived_virtual_selected_rows')
+    ])
+def update_spectrum(table_data, table_selected):
+    # Getting the row values
+
+    if table_selected is None or len(table_selected) == 0:
+        return "No spectra selected"
+
+    selected_row = table_data[table_selected[0]]
+
+    # Getting the database id
+    database_id = selected_row["database_id"]
+
+    # Getting the processed spectrum
+    spectra_json = _get_processed_spectrum(database_id)
+
+    ms_peaks = spectra_json["peaks"]
+
+    # Now lets draw it
+    max_int = max([peak["i"] for peak in ms_peaks])
+    # Drawing the spectrum object
+    mzs = [peak["mz"] for peak in ms_peaks]
+    ints = [peak["i"]/max_int for peak in ms_peaks]
+    neg_ints = [intensity * -1 for intensity in ints]
+
+    # Hover data
+    hover_labels = ["{:.4f} m/z, {:.2f} int".format(mzs[i], ints[i]) for i in range(len(mzs))]
+
+    ms_fig = go.Figure(
+        data=go.Scatter(x=mzs, y=ints, 
+            mode='markers',
+            marker=dict(size=0.00001),
+            error_y=dict(
+                symmetric=False,
+                arrayminus=[0]*len(neg_ints),
+                array=neg_ints,
+                width=0
+            ),
+            text=hover_labels,
+            textposition="top right"
+        )
+    )
+
+    return [dcc.Graph(figure=ms_fig)]
 
 
 # API
@@ -249,6 +307,21 @@ def download():
     
     return send_from_directory(os.path.dirname(database_files[0]), os.path.basename(database_files[0]))
 
+@server.route("/api/spectrum/filtered", methods=["GET"])
+def filtered_spectra():
+    # Getting a single spectrum
+    database_id = request.values.get("database_id")
+
+    # Finding all the database files
+    database_files = glob.glob("/app/workflows/idbac_summarize_database/nf_output/output_spectra_json/**/{}.json".format(os.path.basename(database_id)))
+
+    if len(database_files) == 0:
+        return "File not found", 404
+    
+    if len(database_files) > 1:
+        return "Multiple files found", 500
+    
+    return send_from_directory(os.path.dirname(database_files[0]), os.path.basename(database_files[0]))
 
 @server.route("/api/spectra", methods=["GET"])
 def spectra_list():
@@ -257,6 +330,22 @@ def spectra_list():
 
     # return json
     return summary_df.to_json(orient="records")
+
+def _get_processed_spectrum(database_id):
+    # Finding all the database files
+    database_files = glob.glob("/app/workflows/idbac_summarize_database/nf_output/output_spectra_json/**/{}.json".format(os.path.basename(database_id)))
+
+    if len(database_files) == 0:
+        return None
+    
+    if len(database_files) > 1:
+        return None
+
+    with open(database_files[0]) as file_handle:
+        spectrum_dict = json.load(file_handle)
+
+        return spectrum_dict
+
 
 if __name__ == "__main__":
     app.run_server(debug=True, port=5000, host="0.0.0.0")

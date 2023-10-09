@@ -124,13 +124,15 @@ def load_database(database_mzML, database_scan_mapping_tsv, merge_replicates="Ye
     return merged_spectra_df
 
 
-def output_database(database_df, output_mgf_filename, output_scan_mapping):
+def output_database(database_df, output_mgf_filename, output_scan_mapping, output_spectra_folder):
     database_id_to_scan_list = []
 
     with open(output_mgf_filename, "w") as o:
         database_list = database_df.to_dict(orient="records")
 
         for database_entry in database_list:
+            output_dictionary = {}
+
             row_id = database_entry["row_count"]
 
             scan_number = row_id + 1
@@ -144,17 +146,36 @@ def output_database(database_df, output_mgf_filename, output_scan_mapping):
             database_id_to_scan_obj["mgf_scan"] = scan_number
             database_id_to_scan_list.append(database_id_to_scan_obj)
 
+            output_dictionary["database_id"] = database_entry["scan"]
+
             # Finding all the masses
             all_binned_masses = [x for x in database_entry.keys() if x.startswith("BIN_")]
 
+            peaks_list = []
             for binned_mass in all_binned_masses:
                 intensity = database_entry[binned_mass]
                 mz = float(binned_mass.replace("BIN_", "")) * bin_size
 
                 if intensity > 0:
                     o.write("{} {}\n".format(mz, intensity))
+
+                    peak_obj = {}
+                    peak_obj["mz"] = mz
+                    peak_obj["i"] = intensity
+
+                    peaks_list.append(peak_obj)
+
+            output_dictionary["peaks"] = peaks_list
             
             o.write("END IONS\n")
+
+            # Writing out as json per file
+            path_output_folder = os.path.join(output_spectra_folder, database_entry["scan"][0:4])
+            os.makedirs(path_output_folder, exist_ok=True)
+            path_to_json = os.path.join(path_output_folder, database_entry["scan"] + ".json")
+
+            with open(path_to_json, "w") as f:
+                f.write(json.dumps(output_dictionary, indent=4))
 
     # Writing out the mapping
     database_id_to_scan_df = pd.DataFrame(database_id_to_scan_list)
@@ -167,6 +188,7 @@ def main():
     parser.add_argument('database_scan_mapping_tsv', help="this file maps the scan in the mzML into the database_id")
     parser.add_argument('output_database_mgf', help="This is the merged database file output as an MGF file")
     parser.add_argument('output_mapping', help="This is the output tsv mapping from database_id to scan number in the MGF file")
+    parser.add_argument('output_spectra_json', help="This is where we output the processed data as individual json files")
     
     args = parser.parse_args()
 
@@ -180,7 +202,7 @@ def main():
     database_df["filename"] = os.path.basename(args.database_mzML)
 
     # Writing out the database itself so that we can more easily visualize it
-    output_database(database_df, args.output_database_mgf, args.output_mapping)
+    output_database(database_df, args.output_database_mgf, args.output_mapping, args.output_spectra_json)
 
 
 

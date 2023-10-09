@@ -1,5 +1,5 @@
 run:
-	nextflow run ./nf_workflow.nf -resume -c nextflow.config --input_spectra_folder=./data
+	nextflow run ./nf_workflow.nf -resume --input_database ../../database/depositions/
 
 run_hpcc:
 	nextflow run ./nf_workflow.nf -resume -c nextflow_hpcc.config

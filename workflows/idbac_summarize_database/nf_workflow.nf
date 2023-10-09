@@ -60,13 +60,16 @@ process mergeSpectra {
     output:
     file 'output_database.mgf' optional true
     file 'output_mapping.tsv' optional true
+    file 'output_spectra_json' optional true
 
     """
+    mkdir output_spectra_json
     python $TOOL_FOLDER/merge_spectra.py \
     $idbac_database_mzML \
     $idbac_database_scan_mapping \
     output_database.mgf \
-    output_mapping.tsv
+    output_mapping.tsv \
+    output_spectra_json
     """
 }
 
