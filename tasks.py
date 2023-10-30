@@ -5,6 +5,8 @@ import os
 import json
 from ulid import ULID
 import pandas as pd
+import requests
+import xmltodict
 
 celery_instance = Celery('tasks', backend='redis://idbac-kb-redis', broker='pyamqp://guest@idbac-kb-rabbitmq//', )
 
@@ -48,10 +50,41 @@ def task_summarize_depositions():
 
             spectra_list.append(entry)
 
+    # We can go and get Taxonomy information from the NCBI API
+    for spectra_entry in spectra_list:
+        try:
+            genbank_accession = spectra_entry["Genbank accession"]
+
+            # Updating the URL
+            mapping_url = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/elink.fcgi?dbfrom=nucleotide&db=nucleotide&id={}&rettype=gb&retmode=xml".format(genbank_accession)
+
+            r = requests.get(mapping_url)
+            result_dictionary = xmltodict.parse(r.text)
+            
+            try:
+                nuccore_id = result_dictionary["eLinkResult"]["LinkSet"][0]["IdList"]["Id"]
+            except:
+                nuccore_id = result_dictionary["eLinkResult"]["LinkSet"]["IdList"]["Id"]
+
+            # here we will use an API to get the information
+            xml_url = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=nuccore&id={}&retmode=xml".format(nuccore_id)
+
+            r = requests.get(xml_url)
+            result_dictionary = xmltodict.parse(r.text)
+
+            # Getting taxonomy
+            taxonomy = result_dictionary["GBSet"]["GBSeq"]["GBSeq_taxonomy"]
+            organism = result_dictionary["GBSet"]["GBSeq"]["GBSeq_organism"]
+
+            spectra_entry["FullTaxonomy"] = taxonomy + "; " + organism
+        except:
+            pass
+
+
     # Summarizing
     df = pd.DataFrame(spectra_list)
 
-    # TODO: we can go and get Taxonomy information from the NCBI API
+    
 
     # Saving the summary
     df.to_csv("database/summary.tsv", index=False, sep="\t")

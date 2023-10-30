@@ -73,6 +73,27 @@ process mergeSpectra {
     """
 }
 
+process prepareOutput {
+    publishDir "./nf_output", mode: 'copy'
+
+    conda "$TOOL_FOLDER/conda_env.yml"
+
+    input:
+    file idbac_full_spectra_json
+    file idbac_merged_spectra_json_folder
+
+    output:
+    file 'output_merged_spectra.json' optional true
+
+    """
+    python $TOOL_FOLDER/create_consolidated_merged_spectra.py \
+    $idbac_full_spectra_json \
+    $idbac_merged_spectra_json_folder \
+    output_merged_spectra.json
+    """
+    
+}
+
 // TODO: We need to merge the full summary with the scan mapping so we know the scan number to show in the summary
 
 workflow {
@@ -85,5 +106,8 @@ workflow {
     baseline_corrected_database_mzML_ch = baselineCorrection2(output_idbac_mzML_ch)
 
     // Merging the database spectra
-    mergeSpectra(baseline_corrected_database_mzML_ch, output_scan_mapping_ch)
+    (_, _, merged_json_folder_ch) = mergeSpectra(baseline_corrected_database_mzML_ch, output_scan_mapping_ch)
+
+    // Consolidating the merged output
+    prepareOutput(output_idbac_database_ch, merged_json_folder_ch)
 }

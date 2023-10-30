@@ -3,14 +3,14 @@ MAINTAINER Mingxun Wang "mwang87@gmail.com"
 
 RUN apt-get update && apt-get install -y build-essential libarchive-dev
 
-COPY requirements.txt .
-RUN pip install -r requirements.txt
-
 # Installing mamba
 RUN conda install -c conda-forge mamba
 
 # installing nextflow
 RUN mamba install -c bioconda nextflow
+
+COPY requirements.txt .
+RUN pip install -r requirements.txt
 
 COPY . /app
 WORKDIR /app
