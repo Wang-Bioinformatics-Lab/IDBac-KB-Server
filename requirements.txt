@@ -4,7 +4,7 @@ plotly
 pandas
 requests
 tqdm
-Werkzeug
+Werkzeug==2.2.2
 Flask-Caching
 dash
 dash-bootstrap-components
@@ -16,3 +16,4 @@ celery==5.0.5
 celery_once==3.0.1
 python-ulid
 python-dotenv
+xmltodict

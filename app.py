@@ -77,6 +77,7 @@ NAVBAR = dbc.Navbar(
         dbc.Nav(
             [
                 dbc.NavItem(dbc.NavLink("Wang Bioinformatics Lab - IDBac Knowledgebase - Version 0.1", href="#")),
+                dbc.NavItem(dbc.NavLink("Download Summary", href="/api/spectra")),
             ],
         navbar=True)
     ],
@@ -296,6 +297,9 @@ def download():
     # Getting a single spectrum
     database_id = request.values.get("database_id")
 
+    if database_id == "ALL":
+        return send_from_directory("/app/workflows/idbac_summarize_database/nf_output/", "idbac_database.json")
+
     # Finding all the database files
     database_files = glob.glob("database/depositions/**/{}.json".format(os.path.basename(database_id)))
 
@@ -311,6 +315,9 @@ def download():
 def filtered_spectra():
     # Getting a single spectrum
     database_id = request.values.get("database_id")
+
+    if database_id == "ALL":
+        return send_from_directory("/app/workflows/idbac_summarize_database/nf_output/", "output_merged_spectra.json")
 
     # Finding all the database files
     database_files = glob.glob("/app/workflows/idbac_summarize_database/nf_output/output_spectra_json/**/{}.json".format(os.path.basename(database_id)))
@@ -330,6 +337,7 @@ def spectra_list():
 
     # return json
     return summary_df.to_json(orient="records")
+
 
 def _get_processed_spectrum(database_id):
     # Finding all the database files
