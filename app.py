@@ -284,7 +284,6 @@ def deposit():
 
     # Saving the results here
     task_result = tasks.task_deposit_data.delay(spectrum_dict, None)
-    task_result.get()
 
     # Enable this call to be blocking
     return "DONE"
