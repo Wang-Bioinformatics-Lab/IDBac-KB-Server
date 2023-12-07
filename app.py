@@ -286,9 +286,6 @@ def deposit():
     task_result = tasks.task_deposit_data.delay(spectrum_dict, None)
     task_result.get()
 
-    # Calling task to summarize and update the catalog
-    tasks.task_summarize_depositions.delay()
-
     # Enable this call to be blocking
     return "DONE"
 
