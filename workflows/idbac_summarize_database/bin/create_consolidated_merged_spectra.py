@@ -1,6 +1,7 @@
 import argparse
 import os
 import glob
+import json
 
 def main():
     parser = argparse.ArgumentParser(description="Create a merged spectrum from multiple spectra")
