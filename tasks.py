@@ -100,7 +100,10 @@ def task_summarize_depositions():
     cmd = "cd /app/workflows/idbac_summarize_database/ && \
     nextflow run /app/workflows/idbac_summarize_database/nf_workflow.nf \
     --input_database /app/database/depositions \
-    -profile docker"
+    -profile docker \
+    -c /app/workflows/idbac_summarize_database/nextflow.config"
+
+    print(cmd)
 
     os.system(cmd)
 
