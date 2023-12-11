@@ -31,7 +31,7 @@ def task_deposit_data(deposit_dict, collection_name):
 
     return "Done"
 
-@celery_instance.task(time_limit=3600)
+@celery_instance.task(time_limit=10000)
 def task_summarize_depositions():
     print("Summarize", file=sys.stderr, flush=True)
 
@@ -119,7 +119,7 @@ def task_summarize_depositions():
 
 
 celery_instance.conf.task_routes = {
-    'tasks.task_computeheartbeat': {'queue': 'worker'},
-    'tasks.task_deposit_data': {'queue': 'worker'},
-    'tasks.task_summarize_depositions': {'queue': 'worker'},
+    'tasks.task_computeheartbeat': {'queue': 'depositionworker'},
+    'tasks.task_deposit_data': {'queue': 'depositionworker'},
+    'tasks.task_summarize_depositions': {'queue': 'summaryworker'},
 }

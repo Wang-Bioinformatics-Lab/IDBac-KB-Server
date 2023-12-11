@@ -40,6 +40,24 @@ services:
       - default
       - nginx-net
 
+  idbac-kb-depositionworker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: idbac-kb-depositionworker
+    volumes:
+      - ./logs:/app/logs:rw
+      - ./database:/app/database:rw
+      - ./workflows:/app/workflows:rw
+    command: /app/run_depositionworker.sh
+    restart: unless-stopped
+    depends_on: 
+      - idbac-kb-redis
+      - idbac-kb-rabbitmq
+    networks:
+      - default
+      - nginx-net
+
   idbac-kb-rabbitmq:
     container_name: idbac-kb-rabbitmq
     image: rabbitmq
