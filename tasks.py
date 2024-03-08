@@ -51,15 +51,20 @@ def task_summarize_depositions():
             spectra_list.append(entry)
     
     # clean up all entries by removing whitespace for each key
+    new_spectra_list = []
     for entry in spectra_list:
+        new_entry = {}
         for key in entry:
+            
             new_key = key.rstrip().lstrip()
             if new_key != key:
-                entry[new_key] = entry[key]
+                new_entry[new_key] = entry[key]
+            else:
+                new_entry[key] = entry[key]
 
-                # drop old key
-                entry.pop(key, None)
+        new_spectra_list.append(new_entry)
 
+    spectra_list = new_spectra_list
 
     # We can go and get Taxonomy information from the NCBI API
     for spectra_entry in spectra_list:
