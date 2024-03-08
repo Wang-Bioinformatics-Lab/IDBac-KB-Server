@@ -49,6 +49,17 @@ def task_summarize_depositions():
             entry.pop("spectrum", None)
 
             spectra_list.append(entry)
+    
+    # clean up all entries by removing whitespace for each key
+    for entry in spectra_list:
+        for key in entry:
+            new_key = key.rstrip().lstrip()
+            if new_key != key:
+                entry[new_key] = entry[key]
+
+                # drop old key
+                entry.pop(key, None)
+
 
     # We can go and get Taxonomy information from the NCBI API
     for spectra_entry in spectra_list:
@@ -83,6 +94,7 @@ def task_summarize_depositions():
 
     # Summarizing
     df = pd.DataFrame(spectra_list)
+
 
     
 
