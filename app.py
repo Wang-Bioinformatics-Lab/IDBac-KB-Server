@@ -207,7 +207,7 @@ def last_updated(search):
         last_updated_time = os.path.getmtime(path_to_database_consolidated_file)
         last_updated_time = pd.to_datetime(last_updated_time, unit='s')
 
-        return ["Last Updated: {}".format(last_updated_time)]
+        return ["Last Updated: {} UTC".format(last_updated_time)]
     else:
         return [""]
 
