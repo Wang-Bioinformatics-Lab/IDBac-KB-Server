@@ -102,7 +102,11 @@ DATASELECTION_CARD = [
                     export_format='xlsx',
                     export_headers='display')
             ],
-            id="displaycontent")
+            id="displaycontent"),
+            html.Br(),
+            html.Br(),
+            html.Div(id="update-summary")
+
         ]
     )
 ]
@@ -188,6 +192,25 @@ app.layout = html.Div(children=[NAVBAR, BODY])
 
 def _get_url_param(param_dict, key, default):
     return param_dict.get(key, [default])[0]
+
+
+
+@app.callback([
+                Output('update-summary', 'children')
+              ],
+              [Input('url', 'search')])
+def last_updated(search):
+    path_to_database_consolidated_file = os.path.join("/app/workflows/idbac_summarize_database/nf_output/", "output_merged_spectra.json")
+
+    # checking the age of this file
+    if os.path.exists(path_to_database_consolidated_file):
+        last_updated_time = os.path.getmtime(path_to_database_consolidated_file)
+        last_updated_time = pd.to_datetime(last_updated_time, unit='s')
+
+        return ["Last Updated: {}".format(last_updated_time)]
+    else:
+        return [""]
+
 
 @app.callback([
                 Output('displaytable', 'data'),
