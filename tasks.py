@@ -6,6 +6,7 @@ import json
 from ulid import ULID
 import pandas as pd
 import requests
+import requests_cache
 import xmltodict
 
 celery_instance = Celery('tasks', backend='redis://idbac-kb-redis', broker='pyamqp://guest@idbac-kb-rabbitmq//', )
@@ -74,7 +75,7 @@ def task_summarize_depositions():
             # Updating the URL
             mapping_url = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/elink.fcgi?dbfrom=nucleotide&db=nucleotide&id={}&rettype=gb&retmode=xml".format(genbank_accession)
 
-            r = requests.get(mapping_url)
+            r = requests.get(mapping_url, timeout=10)
             result_dictionary = xmltodict.parse(r.text)
             
             try:
@@ -85,7 +86,7 @@ def task_summarize_depositions():
             # here we will use an API to get the information
             xml_url = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=nuccore&id={}&retmode=xml".format(nuccore_id)
 
-            r = requests.get(xml_url)
+            r = requests.get(xml_url, timeout=10)
             result_dictionary = xmltodict.parse(r.text)
 
             # Getting taxonomy
@@ -96,16 +97,21 @@ def task_summarize_depositions():
         except:
             pass
 
-
-    # Summarizing
+    # Summarizing the spectra
     df = pd.DataFrame(spectra_list)
-
-
-    
 
     # Saving the summary
     df.to_csv("database/summary.tsv", index=False, sep="\t")
 
+    # Calling the nextflow script
+    task_summarize_nextflow.delay()
+
+    # Then we need to copy the files back from the right location
+    return "Done"
+
+
+@celery_instance.task(time_limit=20000)
+def task_summarize_nextflow():
     # Trying to cleanup the work folder
     try:
         os.system("rm -rf /app/workflows/idbac_summarize_database/work")
@@ -124,8 +130,6 @@ def task_summarize_depositions():
 
     os.system(cmd)
 
-    # Then we need to copy the files back from the right location
-    return "Done"
 
 # celery_instance.conf.beat_schedule = {
 #     "cleanup": {
@@ -138,5 +142,7 @@ def task_summarize_depositions():
 celery_instance.conf.task_routes = {
     'tasks.task_computeheartbeat': {'queue': 'depositionworker'},
     'tasks.task_deposit_data': {'queue': 'depositionworker'},
+
     'tasks.task_summarize_depositions': {'queue': 'summaryworker'},
+    'tasks.task_summarize_nextflow': {'queue': 'summaryworker'},
 }
