@@ -3,6 +3,7 @@ gunicorn
 plotly
 pandas
 requests
+requests_cache
 tqdm
 Werkzeug==2.2.2
 Flask-Caching
