@@ -10,7 +10,7 @@ from tqdm import tqdm
 import glob
 import numpy as np
 
-bin_size = 10.0
+bin_size = 1.0
 
 def load_data(input_filename):
     try:
