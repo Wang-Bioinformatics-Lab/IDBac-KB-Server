@@ -357,6 +357,12 @@ def spectra_list():
     # return json
     return summary_df.to_json(orient="records")
 
+@server.route("/admin/nextflow_report", methods=["GET"])
+def nextflow_report():
+    if os.path.exists("/app/workflows/idbac_summarize_database/IDBac_summarize_database_report.html"):
+        return send_from_directory("/app/workflows/idbac_summarize_database", "IDBac_summarize_database_report.html")
+    else:
+        return "No Report Found", 404
 
 def _get_processed_spectrum(database_id):
     # Finding all the database files
