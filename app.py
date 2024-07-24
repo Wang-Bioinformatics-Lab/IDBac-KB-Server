@@ -359,10 +359,8 @@ def spectra_list():
 
 @server.route("/admin/nextflow_report", methods=["GET"])
 def nextflow_status():
-    path = './workflows/idbac_summarize_database/work/IDBac_summarize_database_report.html'
-
     if os.path.exists(path):
-        return send_from_directory("/app/workflows/idbac_summarize_database/work", "IDBac_summarize_database_report.html")
+        return send_from_directory("/app/workflows/idbac_summarize_database", "IDBac_summarize_database_report.html")
     else:
         return "No Report Found", 404
 
