@@ -124,8 +124,7 @@ def task_summarize_nextflow():
     nextflow run /app/workflows/idbac_summarize_database/nf_workflow.nf \
     --input_database /app/database/depositions \
     -profile docker \
-    -c /app/workflows/idbac_summarize_database/nextflow.config &> \
-    nextflow_log.txt"
+    -c /app/workflows/idbac_summarize_database/nextflow.config"
 
     print(cmd)
 
