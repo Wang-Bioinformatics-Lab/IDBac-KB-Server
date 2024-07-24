@@ -24,10 +24,10 @@ process formatDatabase {
     $idbac_database_folder \
     idbac_database.json \
     idbac_database_scanmapping.tsv \
-    temp.mzML
+    idbac_database.mzML
 
-    export LC_ALL=C && $TOOL_FOLDER/msconvert temp.mzML \
-    --mzML --32 --outfile idbac_database.mzML
+    # export LC_ALL=C && $TOOL_FOLDER/msconvert temp.mzML \
+    # --mzML --32 --outfile idbac_database.mzML
     """
 }
 
