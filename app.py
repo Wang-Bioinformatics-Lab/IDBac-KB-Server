@@ -241,7 +241,9 @@ def last_updated(search):
 def display_table(search):
     summary_df = pd.read_csv("database/summary.tsv", sep="\t")
     # Remove columns shown in "Additional Data"
-    summary_df = summary_df.drop(columns=["spectrum", "FullTaxonomy", "database_id", "16S Sequence"])
+    summary_df = summary_df.drop(columns=["FullTaxonomy", "task"])  # Don't drop the database_id column
+    if  "16S Sequence" in summary_df.columns:
+        summary_df = summary_df.drop(columns=["16S Sequence"])
 
     columns = [{"name": i, "id": i} for i in summary_df.columns]
     data = summary_df.to_dict('records')
@@ -320,7 +322,6 @@ def update_additional_data(table_data, table_selected):
     df = pd.read_csv("database/summary.tsv", sep="\t")
     selected_row = df[df["database_id"] == database_id]
     data = selected_row.to_dict('records')[0]
-    print(data, flush=True)
 
     # Getting the taxonomies
     taxonomies = data.get("FullTaxonomy")
