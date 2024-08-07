@@ -95,12 +95,22 @@ DATASELECTION_CARD = [
                     id='displaytable',
                     columns=[],
                     data=[],
+                    hidden_columns=[],
                     row_selectable='single',
                     page_size=10,
                     sort_action='native',
                     filter_action='native',
                     export_format='xlsx',
-                    export_headers='display')
+                    export_headers='display',
+                    style_header={
+                        'whiteSpace': 'normal',
+                        },
+                    style_table={
+                        'width': '100%',
+                        'overflowX': 'auto',
+                    },
+                    )
+                    
             ],
             id="displaycontent"),
             html.Br(),
@@ -235,20 +245,27 @@ def last_updated(search):
 
 @app.callback([
                 Output('displaytable', 'data'),
-                Output('displaytable', 'columns')
+                Output('displaytable', 'columns'),
+                Output('displaytable', 'hidden_columns')
               ],
               [Input('url', 'search')])
 def display_table(search):
     summary_df = pd.read_csv("database/summary.tsv", sep="\t")
     # Remove columns shown in "Additional Data"
-    summary_df = summary_df.drop(columns=["FullTaxonomy", "task"])  # Don't drop the database_id column
-    if  "16S Sequence" in summary_df.columns:
-        summary_df = summary_df.drop(columns=["16S Sequence"])
+    hidden_columns = set(["FullTaxonomy", "task", "Scan/Coordinate", 
+                      "Filename", "Comment", "16S Sequence", "database_id", 
+                      "user", "Latitude", "Longitude", "Altitude",
+                      "Sample Collected by", "Isolate Collected by",
+                      "MS Collected by", "Cultivation temp", "Cultivation time",
+                      "NCBI taxid", "Strain ID"])
+    # Make safe if columns are missing
+    hidden_columns = list(hidden_columns.intersection(summary_df.columns))
 
-    columns = [{"name": i, "id": i} for i in summary_df.columns]
+    columns = [{"name": i, "id": i, "hideable": True} for i in summary_df.columns]
+
     data = summary_df.to_dict('records')
     
-    return [data, columns]
+    return [data, columns, hidden_columns]
 
 
 # We will plot spectra based on which row is selected in the table
@@ -328,12 +345,18 @@ def update_additional_data(table_data, table_selected):
     databse_id = data.get("database_id")
     task       = data.get("task")
     sequence   = data.get("16S Sequence")
+    filename   = data.get("filename")
+    comment    = data.get("Comment")
 
     # Output the data
     return [html.H5("Database ID:"),
             html.P(databse_id),
+            html.H5("Filename:"),
+            html.P(filename),
             html.H5("Task:"),
             html.P(task),
+            html.H5("Comment:"),
+            html.P(comment),
             html.H5("Taxonomies:"),
             html.P(taxonomies),
             html.H5("16S Sequence:"),
