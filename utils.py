@@ -105,6 +105,14 @@ def get_taxonomy(spectra_entry, ncbi_taxa):
         except Exception as e:
             print(e)
 
+        if taxonomy != "":
+            return taxonomy
+        
+    # Final fallback to 16S Taxonomy
+    if "16S taxonomy" in spectra_entry:
+        if spectra_entry["16S taxonomy"] != "":
+            taxonomy = spectra_entry["16S taxonomy"].strip() + " (User Submitted 16S)"
+
     return taxonomy
         
 def populate_taxonomies(spectra_list):
