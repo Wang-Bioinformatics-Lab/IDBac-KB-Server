@@ -241,7 +241,7 @@ def last_updated(search):
 def display_table(search):
     summary_df = pd.read_csv("database/summary.tsv", sep="\t")
     # Remove columns shown in "Additional Data"
-    summary_df = summary_df.drop(columns=["FullTaxonomy", "database_id", "task"])
+    summary_df = summary_df.drop(columns=["FullTaxonomy", "task"])  # Don't drop the database_id column
     if  "16S Sequence" in summary_df.columns:
         summary_df = summary_df.drop(columns=["16S Sequence"])
 
