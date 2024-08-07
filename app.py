@@ -71,8 +71,8 @@ app.index_string = """<!DOCTYPE html>
 NAVBAR = dbc.Navbar(
     children=[
         dbc.NavbarBrand(
-            html.Img(src="https://gnps2.org/static/img/logo.png", width="120px"),
-            href="https://mingxunwang.com"
+            html.Img(src="assets/GNPS2xIDBac.png", width="240px"),
+            href="https://gnps2.org"
         ),
         dbc.Nav(
             [
