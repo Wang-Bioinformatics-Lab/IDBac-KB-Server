@@ -253,7 +253,7 @@ def display_table(search):
     summary_df = pd.read_csv("database/summary.tsv", sep="\t")
     # Remove columns shown in "Additional Data"
     hidden_columns = set(["FullTaxonomy", "task", "Scan/Coordinate", 
-                      "Filename", "Comment", "16S Sequence", "database_id", 
+                      "Filename", "Comment", "16S Sequence", "16S Taxonomy", "database_id", 
                       "user", "Latitude", "Longitude", "Altitude",
                       "Sample Collected by", "Isolate Collected by",
                       "MS Collected by", "Cultivation temp", "Cultivation time",
