@@ -132,6 +132,19 @@ MIDDLE_DASHBOARD = [
     )
 ]
 
+ADDITIONAL_DATA = [
+    dbc.CardHeader(html.H5("Additional Data")),
+    dbc.CardBody(
+        [
+            dcc.Loading(
+                id="additional-data",
+                children=[html.Div([html.Div(id="loading-output-24")])],
+                type="default",
+            ),
+        ]
+    )
+]
+
 CONTRIBUTORS_DASHBOARD = [
     dbc.CardHeader(html.H5("Contributors")),
     dbc.CardBody(
@@ -183,6 +196,14 @@ BODY = dbc.Container(
                 className="w-50"
             ),
         ], style={"marginTop": 30}),
+        dbc.Row([
+            dbc.Col(
+                [
+                    dbc.Card(ADDITIONAL_DATA),
+                ],
+                className="w-50"
+            ),
+        ], style={"marginTop": 30}),
     ],
     fluid=True,
     className="",
@@ -219,6 +240,8 @@ def last_updated(search):
               [Input('url', 'search')])
 def display_table(search):
     summary_df = pd.read_csv("database/summary.tsv", sep="\t")
+    # Remove columns shown in "Additional Data"
+    summary_df = summary_df.drop(columns=["spectrum", "FullTaxonomy", "database_id", "16S Sequence"])
 
     columns = [{"name": i, "id": i} for i in summary_df.columns]
     data = summary_df.to_dict('records')
@@ -276,6 +299,44 @@ def update_spectrum(table_data, table_selected):
 
     return [dcc.Graph(figure=ms_fig)]
 
+@app.callback(
+    Output('additional-data', 'children'),
+    [   
+        Input('displaytable', 'derived_virtual_data'),
+        Input('displaytable', 'derived_virtual_selected_rows')
+    ])
+def update_additional_data(table_data, table_selected):
+    # Getting the row values
+
+    if table_selected is None or len(table_selected) == 0:
+        return "No spectra selected"
+
+    selected_row = table_data[table_selected[0]]
+
+    # Getting the database id
+    database_id = selected_row["database_id"]
+
+    # Get the row in the dataframe
+    df = pd.read_csv("database/summary.tsv", sep="\t")
+    selected_row = df[df["database_id"] == database_id]
+    data = selected_row.to_dict('records')[0]
+    print(data, flush=True)
+
+    # Getting the taxonomies
+    taxonomies = data.get("FullTaxonomy")
+    databse_id = data.get("database_id")
+    task       = data.get("task")
+    sequence   = data.get("16S Sequence")
+
+    # Output the data
+    return [html.H5("Database ID:"),
+            html.P(databse_id),
+            html.H5("Task:"),
+            html.P(task),
+            html.H5("Taxonomies:"),
+            html.P(taxonomies),
+            html.H5("16S Sequence:"),
+            html.P(sequence)]
 
 # API
 @server.route("/api")

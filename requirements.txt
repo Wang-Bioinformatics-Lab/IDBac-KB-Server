@@ -2,6 +2,7 @@ Flask
 gunicorn
 plotly
 pandas
+numpy
 requests
 requests_cache
 tqdm
@@ -18,3 +19,5 @@ celery_once==3.0.1
 python-ulid
 python-dotenv
 xmltodict
+ete3
+six
