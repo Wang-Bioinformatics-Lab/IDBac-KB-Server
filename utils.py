@@ -92,7 +92,8 @@ def get_taxonomy(spectra_entry, ncbi_taxa):
         try:
             taxonomy = get_taxonomy_lineage_genbank(genbank_accession)
         except Exception as e:
-            print(e)
+            print("Exception while getting taxonomy for Genbank accession", genbank_accession, flush=True)
+            print(e, flush=True)
 
         if taxonomy != "":
             return taxonomy
@@ -103,15 +104,16 @@ def get_taxonomy(spectra_entry, ncbi_taxa):
             ncbi_taxid = int(ncbi_taxid)
             taxonomy = get_taxonomy_lineage_ncbi(ncbi_taxid, ncbi_taxa)
         except Exception as e:
-            print(e)
+            print("Exception while getting taxonomy for NCBI taxid", ncbi_taxid, flush=True)
+            print(e, flush=True)
 
         if taxonomy != "":
             return taxonomy
         
     # Final fallback to 16S Taxonomy
-    if "16S taxonomy" in spectra_entry:
-        if spectra_entry["16S taxonomy"] != "":
-            taxonomy = spectra_entry["16S taxonomy"].strip() + " (User Submitted 16S)"
+    if "16S Taxonomy" in spectra_entry:
+        if spectra_entry["16S Taxonomy"] is not None and spectra_entry["16S Taxonomy"] != "":
+            taxonomy = spectra_entry["16S Taxonomy"].strip() + " (User Submitted 16S)"
 
     return taxonomy
         
