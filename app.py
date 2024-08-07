@@ -345,8 +345,22 @@ def update_additional_data(table_data, table_selected):
     databse_id = data.get("database_id")
     task       = data.get("task")
     sequence   = data.get("16S Sequence")
-    filename   = data.get("filename")
+    filename   = data.get("Filename")
     comment    = data.get("Comment")
+
+    # If any of the above are None or '', replace with "No Data"
+    if taxonomies is None or taxonomies == "":
+        taxonomies = "No Data"
+    if databse_id is None or databse_id == "":
+        databse_id = "No Data"
+    if task is None or task == "":
+        task = "No Data"
+    if sequence is None or sequence == "":
+        sequence = "No Data"
+    if filename is None or filename == "":
+        filename = "No Data"
+    if comment is None or comment == "":
+        comment = "No Data"
 
     # Output the data
     return [html.H5("Database ID:"),
@@ -357,7 +371,7 @@ def update_additional_data(table_data, table_selected):
             html.P(task),
             html.H5("Comment:"),
             html.P(comment),
-            html.H5("Taxonomies:"),
+            html.H5("Taxonomy:"),
             html.P(taxonomies),
             html.H5("16S Sequence:"),
             html.P(sequence)]
