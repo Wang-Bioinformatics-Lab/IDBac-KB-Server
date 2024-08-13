@@ -159,10 +159,16 @@ CONTRIBUTORS_DASHBOARD = [
     dbc.CardHeader(html.H5("Contributors")),
     dbc.CardBody(
         [
-            "Mingxun Wang PhD - UC Riverside",
+            "Nyssa Krull - University of Illinois Chicago", html.Br(),
+            "Michael Strobel - UC Riverside", html.Br(),
+            "Robert A. Shepherd - UC Santa Cruz", html.Br(),
+            "Chase M. Clark, PhD - University of Wisconsin", html.Br(),
+            "Laura M. Sanchez, PhD - UC Santa Cruz", html.Br(),
+            "Mingxun Wang, PhD - UC Riverside", html.Br(),
+            "Brian T. Murphy, PhD - University of Illinois Chicago", html.Br(),
             html.Br(),
             html.Br(),
-            html.H5("Citation"),
+            html.H5("GNPS Citation"),
             html.A('Mingxun Wang, Jeremy J. Carver, Vanessa V. Phelan, Laura M. Sanchez, Neha Garg, Yao Peng, Don Duy Nguyen et al. "Sharing and community curation of mass spectrometry data with Global Natural Products Social Molecular Networking." Nature biotechnology 34, no. 8 (2016): 828. PMID: 27504778', 
                     href="https://www.nature.com/articles/nbt.3597"),
             html.Br(),
