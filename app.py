@@ -51,11 +51,9 @@ summary_df = None
 if os.path.exists("database/summary.tsv"):
     summary_df = pd.read_csv("database/summary.tsv", sep="\t")
     summary_df["FullTaxonomy"] = summary_df["FullTaxonomy"].fillna("No Taxonomy")
-    # user_submitted_mask = summary_df["FullTaxonomy"].str.contains("User Submitted 16S")
     summary_df["PlottedTaxonomy"] = summary_df["FullTaxonomy"].str.split(";").str[-1]
     # Remove "User Submitted 16S"
-    taxonomy_df = summary_df["PlottedTaxonomy"].str.split("User Submitted 16S").str[0]
-    # summary_df.loc[user_submitted_mask, "PlottedTaxonomy"] = summary_df.loc[user_submitted_mask, "FullTaxonomy"]
+    summary_df["PlottedTaxonomy"] = summary_df["PlottedTaxonomy"].str.split("\(User Submitted 16S").str[0].str.strip()
     taxonomy_counts = summary_df["PlottedTaxonomy"].value_counts().reset_index()
 
 # setting tracking token
@@ -357,26 +355,6 @@ def update_spectrum(table_data, table_selected):
     )
 
     return [dcc.Graph(figure=ms_fig)]
-
-# @app.callback(
-#     Output('database-contents', 'children'),
-#     []
-# )
-# def update_database_contents():
-#     # Parse summary
-#     summary_df = pd.read_csv("database/summary.tsv", sep="\t")
-
-#     # Count of Spectra
-#     count_of_spectra = len(summary_df)
-
-#     # Count of Taxonomy
-#     taxonomy_counts = summary_df["FullTaxonomy"].value_counts()
-
-#     # Pie Chart of Taxonomy
-#     fig = px.pie(taxonomy_counts, values=taxonomy_counts.values, names=taxonomy_counts.index, title="Taxonomy Distribution")
-
-#     return [dcc.Graph(figure=fig)]
-
 
 @app.callback(
     Output('additional-data', 'children'),
