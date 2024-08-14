@@ -47,6 +47,17 @@ _env = dotenv_values()
 
 server = app.server
 
+summary_df = None
+if os.path.exists("database/summary.tsv"):
+    summary_df = pd.read_csv("database/summary.tsv", sep="\t")
+    summary_df["FullTaxonomy"] = summary_df["FullTaxonomy"].fillna("No Taxonomy")
+    # user_submitted_mask = summary_df["FullTaxonomy"].str.contains("User Submitted 16S")
+    summary_df["PlottedTaxonomy"] = summary_df["FullTaxonomy"].str.split(";").str[-1]
+    # Remove "User Submitted 16S"
+    taxonomy_df = summary_df["PlottedTaxonomy"].str.split("User Submitted 16S").str[0]
+    # summary_df.loc[user_submitted_mask, "PlottedTaxonomy"] = summary_df.loc[user_submitted_mask, "FullTaxonomy"]
+    taxonomy_counts = summary_df["PlottedTaxonomy"].value_counts().reset_index()
+
 # setting tracking token
 app.index_string = """<!DOCTYPE html>
 <html>
@@ -142,6 +153,23 @@ MIDDLE_DASHBOARD = [
     )
 ]
 
+# Count of Spectra, Pie Chart of Taxonomy
+DATABASE_CONTENTS = [
+    dbc.CardHeader(html.H5("Database Contents")),
+    dbc.CardBody(
+        [
+            dcc.Graph(id="taxonomy-pie-chart",
+                      figure=px.pie(taxonomy_counts, 
+                                    values="count", 
+                                    names="PlottedTaxonomy",
+                                    title="Taxonomy Distribution",
+                                ).update_traces(textposition='inside').update_layout(uniformtext_minsize=12, uniformtext_mode='hide')
+
+                    ),
+        ]
+    )
+]
+
 ADDITIONAL_DATA = [
     dbc.CardHeader(html.H5("Additional Data")),
     dbc.CardBody(
@@ -159,7 +187,7 @@ CONTRIBUTORS_DASHBOARD = [
     dbc.CardHeader(html.H5("Contributors")),
     dbc.CardBody(
         [
-            "Nyssa Krull - University of Illinois Chicago", html.Br(),
+            "Nyssa Krull - University of Illinois Chicago (Contact: nkrull [at] uic.edu)", html.Br(),
             "Michael Strobel - UC Riverside", html.Br(),
             "Robert A. Shepherd - UC Santa Cruz", html.Br(),
             "Chase M. Clark, PhD - University of Wisconsin", html.Br(),
@@ -207,7 +235,7 @@ BODY = dbc.Container(
             ),
             dbc.Col(
                 [
-                    dbc.Card(CONTRIBUTORS_DASHBOARD),
+                    dbc.Card(DATABASE_CONTENTS),
                 ],
                 className="w-50"
             ),
@@ -217,7 +245,13 @@ BODY = dbc.Container(
                 [
                     dbc.Card(ADDITIONAL_DATA),
                 ],
-                className="w-50"
+                className="w-50",
+            ),
+            dbc.Col(
+                [
+                    dbc.Card(CONTRIBUTORS_DASHBOARD)
+                ],
+                className="w-50",
             ),
         ], style={"marginTop": 30}),
     ],
@@ -323,6 +357,26 @@ def update_spectrum(table_data, table_selected):
     )
 
     return [dcc.Graph(figure=ms_fig)]
+
+# @app.callback(
+#     Output('database-contents', 'children'),
+#     []
+# )
+# def update_database_contents():
+#     # Parse summary
+#     summary_df = pd.read_csv("database/summary.tsv", sep="\t")
+
+#     # Count of Spectra
+#     count_of_spectra = len(summary_df)
+
+#     # Count of Taxonomy
+#     taxonomy_counts = summary_df["FullTaxonomy"].value_counts()
+
+#     # Pie Chart of Taxonomy
+#     fig = px.pie(taxonomy_counts, values=taxonomy_counts.values, names=taxonomy_counts.index, title="Taxonomy Distribution")
+
+#     return [dcc.Graph(figure=fig)]
+
 
 @app.callback(
     Output('additional-data', 'children'),
