@@ -61,7 +61,8 @@ if os.path.exists("database/summary.tsv"):
     summary_df.loc[is_16S, "Species"] = "User Submitted 16S"
 
     # Get counts by Genus and Species for px.bar
-    summary_df = summary_df.groupby(["Genus", "Species"]).size().reset_index(name="count")
+    # summary_df = summary_df.groupby(["Genus", "Species"]).size().reset_index(name="count")
+    summary_df = summary_df.groupby(["Genus"]).size().reset_index(name="count")
 
 # setting tracking token
 app.index_string = """<!DOCTYPE html>
@@ -167,9 +168,10 @@ DATABASE_CONTENTS = [
                       figure=px.bar(summary_df, 
                                     x="Genus",
                                     y="count",
-                                    color="Species",
-                                    title="Taxonomy Counts",
-                                ).update_layout(showlegend=False)
+                                    # color="Species",
+                                    title="",
+                                ).update_layout(showlegend=False,
+                                                height=550)
 
                     ),
         ]
