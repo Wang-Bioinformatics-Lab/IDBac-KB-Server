@@ -47,6 +47,22 @@ _env = dotenv_values()
 
 server = app.server
 
+summary_df = None
+if os.path.exists("database/summary.tsv"):
+    summary_df = pd.read_csv("database/summary.tsv", sep="\t")
+    summary_df["FullTaxonomy"] = summary_df["FullTaxonomy"].fillna("No Taxonomy")
+    not_16S = ~ summary_df["FullTaxonomy"].str.contains("User Submitted 16S") & ~ summary_df["FullTaxonomy"].str.contains("No Taxonomy")
+    is_16S  = summary_df["FullTaxonomy"].str.contains("User Submitted 16S")
+
+    summary_df.assign(Genus="", Species="")
+    summary_df.loc[not_16S, "Genus"] = summary_df.loc[not_16S, "FullTaxonomy"].str.split(";").str[-2]
+    summary_df.loc[not_16S, "Species"] = summary_df.loc[not_16S, "FullTaxonomy"].str.split(";").str[-1]
+    summary_df.loc[is_16S, "Genus"] = summary_df.loc[is_16S, "FullTaxonomy"].str.split().str[0]
+    summary_df.loc[is_16S, "Species"] = "User Submitted 16S"
+
+    # Get counts by Genus and Species for px.bar
+    summary_df = summary_df.groupby(["Genus", "Species"]).size().reset_index(name="count")
+
 # setting tracking token
 app.index_string = """<!DOCTYPE html>
 <html>
@@ -142,6 +158,24 @@ MIDDLE_DASHBOARD = [
     )
 ]
 
+# Count of Spectra, Bar Chart of Taxonomy
+DATABASE_CONTENTS = [
+    dbc.CardHeader(html.H5("Database Contents")),
+    dbc.CardBody(
+        [
+            dcc.Graph(id="taxonomy-pie-chart",
+                      figure=px.bar(summary_df, 
+                                    x="Genus",
+                                    y="count",
+                                    color="Species",
+                                    title="Taxonomy Counts",
+                                ).update_layout(showlegend=False)
+
+                    ),
+        ]
+    )
+]
+
 ADDITIONAL_DATA = [
     dbc.CardHeader(html.H5("Additional Data")),
     dbc.CardBody(
@@ -159,7 +193,7 @@ CONTRIBUTORS_DASHBOARD = [
     dbc.CardHeader(html.H5("Contributors")),
     dbc.CardBody(
         [
-            "Nyssa Krull - University of Illinois Chicago", html.Br(),
+            "Nyssa Krull - University of Illinois Chicago (Contact: nkrull [at] uic.edu)", html.Br(),
             "Michael Strobel - UC Riverside", html.Br(),
             "Robert A. Shepherd - UC Santa Cruz", html.Br(),
             "Chase M. Clark, PhD - University of Wisconsin", html.Br(),
@@ -207,7 +241,7 @@ BODY = dbc.Container(
             ),
             dbc.Col(
                 [
-                    dbc.Card(CONTRIBUTORS_DASHBOARD),
+                    dbc.Card(DATABASE_CONTENTS),
                 ],
                 className="w-50"
             ),
@@ -217,7 +251,13 @@ BODY = dbc.Container(
                 [
                     dbc.Card(ADDITIONAL_DATA),
                 ],
-                className="w-50"
+                className="w-50",
+            ),
+            dbc.Col(
+                [
+                    dbc.Card(CONTRIBUTORS_DASHBOARD)
+                ],
+                className="w-50",
             ),
         ], style={"marginTop": 30}),
     ],
