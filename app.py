@@ -51,10 +51,17 @@ summary_df = None
 if os.path.exists("database/summary.tsv"):
     summary_df = pd.read_csv("database/summary.tsv", sep="\t")
     summary_df["FullTaxonomy"] = summary_df["FullTaxonomy"].fillna("No Taxonomy")
-    summary_df["PlottedTaxonomy"] = summary_df["FullTaxonomy"].str.split(";").str[-1]
-    # Remove "User Submitted 16S"
-    summary_df["PlottedTaxonomy"] = summary_df["PlottedTaxonomy"].str.split("\(User Submitted 16S").str[0].str.strip()
-    taxonomy_counts = summary_df["PlottedTaxonomy"].value_counts().reset_index()
+    not_16S = ~ summary_df["FullTaxonomy"].str.contains("User Submitted 16S") & ~ summary_df["FullTaxonomy"].str.contains("No Taxonomy")
+    is_16S  = summary_df["FullTaxonomy"].str.contains("User Submitted 16S")
+
+    summary_df.assign(Genus="", Species="")
+    summary_df.loc[not_16S, "Genus"] = summary_df.loc[not_16S, "FullTaxonomy"].str.split(";").str[-2]
+    summary_df.loc[not_16S, "Species"] = summary_df.loc[not_16S, "FullTaxonomy"].str.split(";").str[-1]
+    summary_df.loc[is_16S, "Genus"] = summary_df.loc[is_16S, "FullTaxonomy"].str.split().str[0]
+    summary_df.loc[is_16S, "Species"] = "User Submitted 16S"
+
+    # Get counts by Genus and Species for px.bar
+    summary_df = summary_df.groupby(["Genus", "Species"]).size().reset_index(name="count")
 
 # setting tracking token
 app.index_string = """<!DOCTYPE html>
@@ -151,17 +158,18 @@ MIDDLE_DASHBOARD = [
     )
 ]
 
-# Count of Spectra, Pie Chart of Taxonomy
+# Count of Spectra, Bar Chart of Taxonomy
 DATABASE_CONTENTS = [
     dbc.CardHeader(html.H5("Database Contents")),
     dbc.CardBody(
         [
             dcc.Graph(id="taxonomy-pie-chart",
-                      figure=px.pie(taxonomy_counts, 
-                                    values="count", 
-                                    names="PlottedTaxonomy",
-                                    title="Taxonomy Distribution",
-                                ).update_traces(textposition='inside').update_layout(uniformtext_minsize=12, uniformtext_mode='hide')
+                      figure=px.bar(summary_df, 
+                                    x="Genus",
+                                    y="count",
+                                    color="Species",
+                                    title="Taxonomy Counts",
+                                ).update_layout(showlegend=False)
 
                     ),
         ]
