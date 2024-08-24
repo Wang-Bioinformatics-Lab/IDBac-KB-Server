@@ -10,7 +10,7 @@ import plotly.graph_objects as go
 
 import os
 import urllib.parse
-from flask import Flask, send_from_directory
+from flask import Flask, send_from_directory, render_template
 
 import pandas as pd
 import requests
@@ -33,7 +33,15 @@ from flask import request
 import tasks
 
 server = Flask(__name__)
-app = dash.Dash(__name__, server=server, external_stylesheets=[dbc.themes.BOOTSTRAP])
+
+app = dash.Dash(
+    __name__, 
+    server=server, 
+    external_stylesheets=[dbc.themes.BOOTSTRAP],
+    url_base_pathname='/',  # Use a different base path for Dash
+    use_pages=True
+)
+
 app.title = 'Wang Lab - IDBac KB'
 
 cache = Cache(app.server, config={
@@ -92,7 +100,7 @@ app.index_string = """<!DOCTYPE html>
 NAVBAR = dbc.Navbar(
     children=[
         dbc.NavbarBrand(
-            html.Img(src="assets/GNPS2xIDBac.png", width="240px"),
+            html.Img(src="../assets/GNPS2xIDBac.png", width="240px"),
             href="https://gnps2.org"
         ),
         dbc.Nav(
@@ -107,171 +115,11 @@ NAVBAR = dbc.Navbar(
     sticky="top",
 )
 
-DATASELECTION_CARD = [
-    dbc.CardHeader(html.H5("IDBac KB Spectra List")),
-    dbc.CardBody(
-        [   
-            html.Div([
-                dash_table.DataTable(
-                    id='displaytable',
-                    columns=[],
-                    data=[],
-                    hidden_columns=[],
-                    row_selectable='single',
-                    page_size=10,
-                    sort_action='native',
-                    filter_action='native',
-                    export_format='xlsx',
-                    export_headers='display',
-                    style_header={
-                        'whiteSpace': 'normal',
-                        },
-                    style_table={
-                        'width': '100%',
-                        'overflowX': 'auto',
-                    },
-                    )
-                    
-            ],
-            id="displaycontent"),
-            html.Br(),
-            html.Br(),
-            html.Div(id="update-summary")
-
-        ]
-    )
-]
-
-LEFT_DASHBOARD = [
-    html.Div(
-        [
-            html.Div(DATASELECTION_CARD),
-        ]
-    )
-]
-
-MIDDLE_DASHBOARD = [
-    dbc.CardHeader(html.H5("Data Exploration")),
-    dbc.CardBody(
-        [
-            dcc.Loading(
-                id="output",
-                children=[html.Div([html.Div(id="loading-output-23")])],
-                type="default",
-            ),
-        ]
-    )
-]
-
-# Count of Spectra, Bar Chart of Taxonomy
-DATABASE_CONTENTS = [
-    dbc.CardHeader(html.H5("Database Contents")),
-    dbc.CardBody(
-        [
-            html.H5(f"Total number of spectra: {number_of_database_entries}"),
-            html.H5(f"Number of unique genera: {len(summary_df)}"),
-            dcc.Graph(id="taxonomy-pie-chart",
-                      figure=px.pie(summary_df, 
-                                    values="count", 
-                                    names="Genus",
-                                    title="Taxonomy Distribution",
-                                ).update_traces(textposition='inside').update_layout(uniformtext_minsize=12, uniformtext_mode='hide')
-
-                    ),
-        ]
-    )
-]
-
-ADDITIONAL_DATA = [
-    dbc.CardHeader(html.H5("Additional Data")),
-    dbc.CardBody(
-        [
-            dcc.Loading(
-                id="additional-data",
-                children=[html.Div([html.Div(id="loading-output-24")])],
-                type="default",
-            ),
-        ]
-    )
-]
-
-CONTRIBUTORS_DASHBOARD = [
-    dbc.CardHeader(html.H5("Contributors")),
-    dbc.CardBody(
-        [
-            "Nyssa Krull - University of Illinois Chicago (Contact: nkrull [at] uic.edu)", html.Br(),
-            "Michael Strobel - UC Riverside", html.Br(),
-            "Robert A. Shepherd - UC Santa Cruz", html.Br(),
-            "Chase M. Clark, PhD - University of Wisconsin", html.Br(),
-            "Laura M. Sanchez, PhD - UC Santa Cruz", html.Br(),
-            "Mingxun Wang, PhD - UC Riverside", html.Br(),
-            "Brian T. Murphy, PhD - University of Illinois Chicago", html.Br(),
-            html.Br(),
-            html.Br(),
-            html.H5("GNPS Citation"),
-            html.A('Mingxun Wang, Jeremy J. Carver, Vanessa V. Phelan, Laura M. Sanchez, Neha Garg, Yao Peng, Don Duy Nguyen et al. "Sharing and community curation of mass spectrometry data with Global Natural Products Social Molecular Networking." Nature biotechnology 34, no. 8 (2016): 828. PMID: 27504778', 
-                    href="https://www.nature.com/articles/nbt.3597"),
-            html.Br(),
-            html.Br(),
-            html.A('Checkout our other work!', 
-                href="https://www.cs.ucr.edu/~mingxunw/")
-        ]
-    )
-]
-
-EXAMPLES_DASHBOARD = [
-    dbc.CardHeader(html.H5("Examples")),
-    dbc.CardBody(
-        [
-            html.A('Basic', 
-                    href=""),
-        ]
-    )
-]
-
-BODY = dbc.Container(
-    [
-        dcc.Location(id='url', refresh=False),
-        dbc.Row([
-            dbc.Col(
-                dbc.Card(LEFT_DASHBOARD),
-                className="w-100"
-            ),
-        ], style={"marginTop": 30}),
-        dbc.Row([
-            dbc.Col(
-                [
-                    dbc.Card(MIDDLE_DASHBOARD),
-                ],
-                className="w-50"
-            ),
-            dbc.Col(
-                [
-                    dbc.Card(DATABASE_CONTENTS),
-                ],
-                className="w-50"
-            ),
-        ], style={"marginTop": 30}),
-        dbc.Row([
-            dbc.Col(
-                [
-                    dbc.Card(ADDITIONAL_DATA),
-                ],
-                className="w-50",
-            ),
-            dbc.Col(
-                [
-                    dbc.Card(CONTRIBUTORS_DASHBOARD)
-                ],
-                className="w-50",
-            ),
-        ], style={"marginTop": 30}),
-    ],
-    fluid=True,
-    className="",
-)
-
-app.layout = html.Div(children=[NAVBAR, BODY])
+# Container should be full width
+app.layout = dbc.Container([ 
+    NAVBAR,
+    dash.page_container
+], fluid=True, style={"width": "100%", "margin": "0", "padding": "0"})
 
 def _get_url_param(param_dict, key, default):
     return param_dict.get(key, [default])[0]
@@ -530,6 +378,10 @@ def _get_processed_spectrum(database_id):
 
         return spectrum_dict
 
+# Flask route for the landing page
+# @server.route("/")
+# def landing_page():
+#     return render_template("landing_page.html")
 
 if __name__ == "__main__":
     app.run_server(debug=True, port=5000, host="0.0.0.0")
