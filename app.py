@@ -48,8 +48,10 @@ _env = dotenv_values()
 server = app.server
 
 summary_df = None
+number_of_database_entries = ""
 if os.path.exists("database/summary.tsv"):
     summary_df = pd.read_csv("database/summary.tsv", sep="\t")
+    number_of_database_entries = str(len(summary_df))
     summary_df["FullTaxonomy"] = summary_df["FullTaxonomy"].fillna("No Taxonomy")
     not_16S = ~ summary_df["FullTaxonomy"].str.contains("User Submitted 16S") & ~ summary_df["FullTaxonomy"].str.contains("No Taxonomy")
     is_16S  = summary_df["FullTaxonomy"].str.contains("User Submitted 16S")
@@ -63,6 +65,8 @@ if os.path.exists("database/summary.tsv"):
     # Get counts by Genus and Species for px.bar
     # summary_df = summary_df.groupby(["Genus", "Species"]).size().reset_index(name="count")
     summary_df = summary_df.groupby(["Genus"]).size().reset_index(name="count")
+    # Strip the Genus column of whitespace
+    summary_df["Genus"] = summary_df["Genus"].str.strip()
 
 # setting tracking token
 app.index_string = """<!DOCTYPE html>
@@ -164,14 +168,14 @@ DATABASE_CONTENTS = [
     dbc.CardHeader(html.H5("Database Contents")),
     dbc.CardBody(
         [
+            html.H5(f"Total number of spectra: {number_of_database_entries}"),
+            html.H5(f"Number of unique genera: {len(summary_df)}"),
             dcc.Graph(id="taxonomy-pie-chart",
-                      figure=px.bar(summary_df, 
-                                    x="Genus",
-                                    y="count",
-                                    # color="Species",
-                                    title="",
-                                ).update_layout(showlegend=False,
-                                                height=550)
+                      figure=px.pie(summary_df, 
+                                    values="count", 
+                                    names="Genus",
+                                    title="Taxonomy Distribution",
+                                ).update_traces(textposition='inside').update_layout(uniformtext_minsize=12, uniformtext_mode='hide')
 
                     ),
         ]
