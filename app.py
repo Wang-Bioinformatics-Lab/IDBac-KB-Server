@@ -37,7 +37,7 @@ server = Flask(__name__)
 app = dash.Dash(
     __name__, 
     server=server, 
-    external_stylesheets=[dbc.themes.BOOTSTRAP],
+    external_stylesheets=[dbc.themes.BOOTSTRAP, '/assets/styles.css'],
     url_base_pathname='/',  # Use a different base path for Dash
     use_pages=True
 )

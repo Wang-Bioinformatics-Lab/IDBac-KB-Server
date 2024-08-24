@@ -223,4 +223,4 @@ BODY = dbc.Container(
 )
 
 def layout(**kwargs):
-    return html.Div(children=[BODY], id="database-page", className="database-page", style={"width": "100%"})
+    return html.Div(children=[BODY])
