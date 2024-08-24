@@ -105,8 +105,9 @@ NAVBAR = dbc.Navbar(
         ),
         dbc.Nav(
             [
-                dbc.NavItem(dbc.NavLink("Wang Bioinformatics Lab - IDBac Knowledgebase - Version 0.1", href="#")),
-                dbc.NavItem(dbc.NavLink("Download Summary", href="/api/spectra")),
+                dbc.NavItem(dbc.NavLink("Home", href="/")),
+                dbc.NavItem(dbc.NavLink("Database", href="/database")),
+                dbc.NavItem(dbc.NavLink("Download Summary", href="https://idbac.org/api/spectra")), # Must use full url to have 'get' request
             ],
         navbar=True)
     ],
@@ -123,8 +124,6 @@ app.layout = dbc.Container([
 
 def _get_url_param(param_dict, key, default):
     return param_dict.get(key, [default])[0]
-
-
 
 @app.callback([
                 Output('update-summary', 'children')
@@ -377,11 +376,6 @@ def _get_processed_spectrum(database_id):
         spectrum_dict = json.load(file_handle)
 
         return spectrum_dict
-
-# Flask route for the landing page
-# @server.route("/")
-# def landing_page():
-#     return render_template("landing_page.html")
 
 if __name__ == "__main__":
     app.run_server(debug=True, port=5000, host="0.0.0.0")

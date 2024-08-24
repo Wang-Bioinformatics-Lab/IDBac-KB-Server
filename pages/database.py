@@ -14,9 +14,9 @@ from dash import html, register_page  #, callback # If you need callbacks, impor
 
 register_page(
     __name__,
-    name='Home',
+    name='IDBac Database',
     top_nav=True,
-    path='/'
+    path='/database'
 )
 
 summary_df = None
