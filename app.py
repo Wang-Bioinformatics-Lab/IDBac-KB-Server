@@ -81,7 +81,7 @@ app.index_string = """<!DOCTYPE html>
 <html>
     <head>
         <!-- Umami Analytics -->
-        <script async defer data-website-id="ENTER YOUR TOKEN HERE" src="https://analytics.gnps2.org/umami.js"></script>
+        <script async defer data-website-id="4611e28d-c0ff-469d-a2f9-a0b54c0c8ee0" src="https://analytics.gnps2.org/umami.js"></script>
         {%metas%}
         <title>{%title%}</title>
         {%favicon%}
