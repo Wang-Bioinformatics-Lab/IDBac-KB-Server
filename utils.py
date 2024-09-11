@@ -1,6 +1,7 @@
 from ete3 import NCBITaxa
 import requests
 import xmltodict
+from time import sleep
 
 def get_taxonomy_lineage_genbank(genbank_accession):
     """Gets the taxonomic lineage string using a genbank accession. Each genbank
@@ -134,6 +135,7 @@ def populate_taxonomies(spectra_list):
     for spectra_entry in spectra_list:
         try:
             taxonomy_string = get_taxonomy(spectra_entry, ncbi_taxa)
+            sleep(0.1)
 
             spectra_entry["FullTaxonomy"] = taxonomy_string
         except:
