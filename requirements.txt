@@ -14,7 +14,7 @@ dash-core-components
 dash-html-components
 dash-renderer
 dash-table
-celery==5.0.5
+celery==5.2.1
 celery_once==3.0.1
 python-ulid
 python-dotenv
