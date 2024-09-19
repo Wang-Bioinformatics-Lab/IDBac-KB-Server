@@ -78,7 +78,7 @@ MIDDLE_DASHBOARD = [
 ]
 
 db_content_dropdown_options = [
-    {'label': 'Kingdom', 'value': 'Kingdom'},
+    # {'label': 'Kingdom', 'value': 'Kingdom'},
     {'label': 'Phylum', 'value': 'Phylum'},
     {'label': 'Class', 'value': 'Class'},
     {'label': 'Order', 'value': 'Order'},
@@ -208,7 +208,7 @@ def update_dynamic_pie_chart(selected_taxonomy):
         dynamic_summary_df = pd.read_csv("database/summary.tsv", sep="\t")
         number_of_database_entries = str(len(dynamic_summary_df))
         dynamic_summary_df["FullTaxonomy"] = dynamic_summary_df["FullTaxonomy"].fillna("No Taxonomy")
-        not_16S = ~ dynamic_summary_df["FullTaxonomy"].str.contains("User Submitted 16S") & ~ dynamic_summary_df["FullTaxonomy"].str.contains("No Taxonomy")
+        not_16S = (~ dynamic_summary_df["FullTaxonomy"].str.contains("User Submitted 16S")) & (~ dynamic_summary_df["FullTaxonomy"].str.contains("No Taxonomy"))
         is_16S  = dynamic_summary_df["FullTaxonomy"].str.contains("User Submitted 16S")
 
         dynamic_summary_df.assign(Kingdom="", Phylum="", Class="", Order="", Family="", Genus="", Species="")
