@@ -100,7 +100,7 @@ app.index_string = """<!DOCTYPE html>
 NAVBAR = dbc.Navbar(
     children=[
         dbc.NavbarBrand(
-            html.Img(src="../assets/GNPS2xIDBac.png", width="240px"),
+            html.Img(src="../assets/GNPS2xIDBac.png", width="240px", style={"padding-left": "15px"}),
             href="https://gnps2.org"
         ),
         dbc.Nav(

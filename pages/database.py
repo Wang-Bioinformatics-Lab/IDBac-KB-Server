@@ -21,24 +21,6 @@ register_page(
     path='/database'
 )
 
-NAVBAR = dbc.Navbar(
-    children=[
-        dbc.NavbarBrand(
-            html.Img(src="assets/GNPS2xIDBac.png", width="240px"),
-            href="https://gnps2.org"
-        ),
-        dbc.Nav(
-            [
-                dbc.NavItem(dbc.NavLink("Wang Bioinformatics Lab - IDBac Knowledgebase - Version 0.1", href="#")),
-                dbc.NavItem(dbc.NavLink("Download Summary", href="/api/spectra")),
-            ],
-        navbar=True)
-    ],
-    color="light",
-    dark=False,
-    sticky="top",
-)
-
 DATASELECTION_CARD = [
     dbc.CardHeader(html.H5("IDBac KB Spectra List")),
     dbc.CardBody(
