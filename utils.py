@@ -8,6 +8,9 @@ def get_taxonomy_lineage_genbank(genbank_accession):
     accession is mapped to a nuccore id, which is then used to get the taxonomy
     information. Each function call is a HTTP request to the NCBI API.
 
+    This function calls sleep(0.5) twice to space out eutils requests. The API-key free rate limit
+    is 3 hits/second
+
     Args:
         genbank_accession (str): The genbank accession number
 
@@ -18,8 +21,10 @@ def get_taxonomy_lineage_genbank(genbank_accession):
     mapping_url = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/elink.fcgi?dbfrom=nucleotide&db=nucleotide&id={}&rettype=gb&retmode=xml".format(genbank_accession)
 
     r = requests.get(mapping_url, timeout=10)
+    sleep(0.5)
+
     result_dictionary = xmltodict.parse(r.text)
-    
+
     try:
         nuccore_id = result_dictionary["eLinkResult"]["LinkSet"][0]["IdList"]["Id"]
     except:
@@ -29,6 +34,7 @@ def get_taxonomy_lineage_genbank(genbank_accession):
     xml_url = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=nuccore&id={}&retmode=xml".format(nuccore_id)
 
     r = requests.get(xml_url, timeout=10)
+    sleep(0.5)
     result_dictionary = xmltodict.parse(r.text)
 
     # Getting taxonomy
@@ -135,7 +141,7 @@ def populate_taxonomies(spectra_list):
     for spectra_entry in spectra_list:
         try:
             taxonomy_string = get_taxonomy(spectra_entry, ncbi_taxa)
-            sleep(0.1)
+            sleep(0.2)
 
             spectra_entry["FullTaxonomy"] = taxonomy_string
         except:
