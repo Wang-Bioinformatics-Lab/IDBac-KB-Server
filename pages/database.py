@@ -212,13 +212,13 @@ def update_dynamic_pie_chart(selected_taxonomy):
         is_16S  = dynamic_summary_df["FullTaxonomy"].str.contains("User Submitted 16S")
 
         dynamic_summary_df.assign(Kingdom="", Phylum="", Class="", Order="", Family="", Genus="", Species="")
-        taxonomy_split = dynamic_summary_df.loc[not_16S, "FullTaxonomy"].str.split(";", expand=True)
+        taxonomy_split = dynamic_summary_df.loc[not_16S, "FullTaxonomy"].str.split(";", n=6, expand=True)
         taxonomy_split.columns = ["Kingdom", "Phylum", "Class", "Order", "Family", "Genus", "Species"]
         dynamic_summary_df.loc[not_16S, ["Kingdom", "Phylum", "Class", "Order", "Family", "Genus", "Species"]] = taxonomy_split
         
         # Handle 16S
         dynamic_summary_df.loc[is_16S, ["Kingdom", "Phylum", "Class", "Order", "Family", "Species"]] = "User Submitted 16S"
-        dynamic_summary_df.loc[is_16S, "Genus"] = dynamic_summary_df.loc[is_16S, "FullTaxonomy"].str.split(n=7).str[0]
+        dynamic_summary_df.loc[is_16S, "Genus"] = dynamic_summary_df.loc[is_16S, "FullTaxonomy"].str.split().str[0]
 
         # Get counts by Genus and Species for px.bar
         # dynamic_summary_df = dynamic_summary_df.groupby(["Genus", "Species"]).size().reset_index(name="count")
