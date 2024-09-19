@@ -25,7 +25,7 @@ BUTTONS = dbc.Col(
             dbc.Col(
                 [
                     dbc.Button(
-                        "IDBac Database", color="primary", className="m-2 button-fixed", href="https://idbac.org/database"
+                        "View Database", color="primary", className="m-2 button-fixed", href="/database"
                         ), 
                     html.P(text_under_button1),
                 ],

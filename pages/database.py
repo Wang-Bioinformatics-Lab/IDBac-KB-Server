@@ -2,6 +2,8 @@
 from dash import dcc
 from dash import html
 from dash import dash_table
+from dash import callback
+from dash.dependencies import Input, Output, State
 import dash_bootstrap_components as dbc
 import plotly.express as px
 
@@ -18,27 +20,6 @@ register_page(
     top_nav=True,
     path='/database'
 )
-
-summary_df = None
-number_of_database_entries = ""
-if os.path.exists("database/summary.tsv"):
-    summary_df = pd.read_csv("database/summary.tsv", sep="\t")
-    number_of_database_entries = str(len(summary_df))
-    summary_df["FullTaxonomy"] = summary_df["FullTaxonomy"].fillna("No Taxonomy")
-    not_16S = ~ summary_df["FullTaxonomy"].str.contains("User Submitted 16S") & ~ summary_df["FullTaxonomy"].str.contains("No Taxonomy")
-    is_16S  = summary_df["FullTaxonomy"].str.contains("User Submitted 16S")
-
-    summary_df.assign(Genus="", Species="")
-    summary_df.loc[not_16S, "Genus"] = summary_df.loc[not_16S, "FullTaxonomy"].str.split(";").str[-2]
-    summary_df.loc[not_16S, "Species"] = summary_df.loc[not_16S, "FullTaxonomy"].str.split(";").str[-1]
-    summary_df.loc[is_16S, "Genus"] = summary_df.loc[is_16S, "FullTaxonomy"].str.split().str[0]
-    summary_df.loc[is_16S, "Species"] = "User Submitted 16S"
-
-    # Get counts by Genus and Species for px.bar
-    # summary_df = summary_df.groupby(["Genus", "Species"]).size().reset_index(name="count")
-    summary_df = summary_df.groupby(["Genus"]).size().reset_index(name="count")
-    # Strip the Genus column of whitespace
-    summary_df["Genus"] = summary_df["Genus"].str.strip()
 
 NAVBAR = dbc.Navbar(
     children=[
@@ -114,21 +95,31 @@ MIDDLE_DASHBOARD = [
     )
 ]
 
+db_content_dropdown_options = [
+    {'label': 'Kingdom', 'value': 'Kingdom'},
+    {'label': 'Phylum', 'value': 'Phylum'},
+    {'label': 'Class', 'value': 'Class'},
+    {'label': 'Order', 'value': 'Order'},
+    {'label': 'Family', 'value': 'Family'},
+    {'label': 'Genus', 'value': 'Genus'},
+    {'label': 'Species', 'value': 'Species'}
+]
+
 # Count of Spectra, Bar Chart of Taxonomy
 DATABASE_CONTENTS = [
     dbc.CardHeader(html.H5("Database Contents")),
     dbc.CardBody(
         [
-            html.H5(f"Total number of spectra: {number_of_database_entries}"),
-            html.H5(f"Number of unique genera: {len(summary_df)}"),
-            dcc.Graph(id="taxonomy-pie-chart",
-                      figure=px.pie(summary_df, 
-                                    values="count", 
-                                    names="Genus",
-                                    title="Taxonomy Distribution",
-                                ).update_traces(textposition='inside').update_layout(uniformtext_minsize=12, uniformtext_mode='hide')
-
-                    ),
+            # Dropdown for the  pie chart
+            dcc.Dropdown(
+                id='taxonomy-dropdown',
+                options=db_content_dropdown_options,
+                value='Genus',  # default value
+                clearable=False
+            ),
+            
+            # pie chart (dynamic, controlled by dropdown)
+            dcc.Graph(id="dynamic-taxonomy-pie-chart")
         ]
     )
 ]
@@ -221,6 +212,62 @@ BODY = dbc.Container(
     fluid=True,
     className="",
 )
+
+
+# Callback to update the second pie chart based on the dropdown value
+@callback(
+    Output('dynamic-taxonomy-pie-chart', 'figure'),
+    Input('taxonomy-dropdown', 'value')
+)
+def update_dynamic_pie_chart(selected_taxonomy):
+    dynamic_summary_df = None
+    number_of_database_entries = ""
+    if os.path.exists("database/summary.tsv"):
+        dynamic_summary_df = pd.read_csv("database/summary.tsv", sep="\t")
+        number_of_database_entries = str(len(dynamic_summary_df))
+        dynamic_summary_df["FullTaxonomy"] = dynamic_summary_df["FullTaxonomy"].fillna("No Taxonomy")
+        not_16S = ~ dynamic_summary_df["FullTaxonomy"].str.contains("User Submitted 16S") & ~ dynamic_summary_df["FullTaxonomy"].str.contains("No Taxonomy")
+        is_16S  = dynamic_summary_df["FullTaxonomy"].str.contains("User Submitted 16S")
+
+        dynamic_summary_df.assign(Kingdom="", Phylum="", Class="", Order="", Family="", Genus="", Species="")
+        taxonomy_split = dynamic_summary_df.loc[not_16S, "FullTaxonomy"].str.split(";", expand=True)
+        taxonomy_split.columns = ["Kingdom", "Phylum", "Class", "Order", "Family", "Genus", "Species"]
+        dynamic_summary_df.loc[not_16S, ["Kingdom", "Phylum", "Class", "Order", "Family", "Genus", "Species"]] = taxonomy_split
+        
+        # Handle 16S
+        dynamic_summary_df.loc[is_16S, ["Kingdom", "Phylum", "Class", "Order", "Family", "Species"]] = "User Submitted 16S"
+        dynamic_summary_df.loc[is_16S, "Genus"] = dynamic_summary_df.loc[is_16S, "FullTaxonomy"].str.split().str[0]
+
+        # Get counts by Genus and Species for px.bar
+        # dynamic_summary_df = dynamic_summary_df.groupby(["Genus", "Species"]).size().reset_index(name="count")
+        dynamic_summary_df = dynamic_summary_df.groupby([selected_taxonomy]).size().reset_index(name="count")
+        # Strip the Genus column of whitespace
+        dynamic_summary_df[selected_taxonomy] = dynamic_summary_df[selected_taxonomy].str.strip()
+
+        count_16S = dynamic_summary_df[dynamic_summary_df[selected_taxonomy] == "User Submitted 16S"]["count"].sum()
+        percent_16S = (count_16S / dynamic_summary_df["count"].sum()) * 100
+
+        dynamic_summary_df = dynamic_summary_df[dynamic_summary_df[selected_taxonomy] != "User Submitted 16S"]
+
+    fig = px.pie(dynamic_summary_df, 
+                 values="count", 
+                 names=selected_taxonomy,  # Update based on selected taxonomy level
+                 title=f"Taxonomy Distribution by {selected_taxonomy}",
+                ).update_traces(textposition='inside').update_layout(uniformtext_minsize=12, uniformtext_mode='hide')
+    
+    if count_16S > 0:
+        fig.add_annotation(
+            x=0.5,
+            y=-0.1,
+            text=f"Number of 16S entries excluded from chart: {int(count_16S):,} ({percent_16S:.2f}%)",
+            showarrow=False,
+            font=dict(size=14),
+            xanchor="center",
+            yanchor="bottom",
+            xref="paper",
+            yref="paper"
+        )
+    return fig
 
 def layout(**kwargs):
     return html.Div(children=[BODY])
