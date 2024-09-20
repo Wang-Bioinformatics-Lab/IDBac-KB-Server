@@ -102,6 +102,12 @@ DATABASE_CONTENTS = [
             
             # pie chart (dynamic, controlled by dropdown)
             dcc.Graph(id="dynamic-taxonomy-pie-chart")
+        
+            # Horizontal bar to seperate
+            html.Hr(),
+
+            # Render Phylogenetic Tree (png)
+            html.Img(src="/assets/styled_phylogenetic_tree.png", style={"width": "100%", "height": "auto"})
         ]
     )
 ]

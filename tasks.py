@@ -5,9 +5,7 @@ import os
 import json
 from ulid import ULID
 import pandas as pd
-import requests
-import requests_cache
-import xmltodict
+from bin.phylogenetic_tree import generate_tree
 from utils import populate_taxonomies
 
 celery_instance = Celery('tasks', backend='redis://idbac-kb-redis', broker='pyamqp://guest@idbac-kb-rabbitmq//', )
@@ -79,6 +77,9 @@ def task_summarize_depositions():
 
     # Calling the nextflow script
     task_summarize_nextflow.delay()
+
+    # Generate the phylogenetic tree
+    generate_tree(df['NCBI taxid'].int.unique())
 
     # Then we need to copy the files back from the right location
     return "Done"

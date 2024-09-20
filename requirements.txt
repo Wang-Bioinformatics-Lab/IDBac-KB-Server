@@ -19,5 +19,6 @@ celery_once==3.0.1
 python-ulid
 python-dotenv
 xmltodict
+PyQt5
 ete3
 six
