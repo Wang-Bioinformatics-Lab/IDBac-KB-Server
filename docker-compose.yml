@@ -67,7 +67,7 @@ services:
 
   idbac-kb-redis:
     container_name: idbac-kb-redis
-    image: redis
+    image: valkey/valkey:alpine3.20
     restart: unless-stopped
     networks:
       - default
