@@ -87,6 +87,10 @@ db_content_dropdown_options = [
     {'label': 'Species', 'value': 'Species'}
 ]
 
+if os.path.exists('/assets/styled_phylogenetic_tree.png'):
+    phylo_img = html.Img(src="/assets/styled_phylogenetic_tree.png", style={"width": "100%", "height": "auto"})
+else:
+    phylo_img = None
 # Count of Spectra, Bar Chart of Taxonomy
 DATABASE_CONTENTS = [
     dbc.CardHeader(html.H5("Database Contents")),
@@ -107,7 +111,8 @@ DATABASE_CONTENTS = [
             html.Hr(),
 
             # Render Phylogenetic Tree (png)
-            html.Img(src="/assets/styled_phylogenetic_tree.png", style={"width": "100%", "height": "auto"})
+            # Don't display if it doesn't exist
+            phylo_img
         ]
     )
 ]
