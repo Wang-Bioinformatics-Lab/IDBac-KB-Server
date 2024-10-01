@@ -79,7 +79,7 @@ def task_summarize_depositions():
     task_summarize_nextflow.delay()
 
     # Generate the phylogenetic tree
-    generate_tree(df['NCBI taxid'].int.unique())
+    generate_tree(df.loc[df['NCBI taxid'].notna(), 'NCBI taxid'].astype(int).unique())
 
     # Then we need to copy the files back from the right location
     return "Done"

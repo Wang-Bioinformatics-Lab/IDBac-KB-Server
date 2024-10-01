@@ -101,7 +101,7 @@ DATABASE_CONTENTS = [
             ),
             
             # pie chart (dynamic, controlled by dropdown)
-            dcc.Graph(id="dynamic-taxonomy-pie-chart")
+            dcc.Graph(id="dynamic-taxonomy-pie-chart"),
         
             # Horizontal bar to seperate
             html.Hr(),
