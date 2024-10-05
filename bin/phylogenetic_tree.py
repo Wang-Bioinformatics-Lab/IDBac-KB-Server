@@ -34,7 +34,7 @@ def generate_tree(taxid_list):
                 node.name = " " + taxid2name[taxid]  # Set to taxonomic name
 
     # Customize the tree rendering (e.g., branch width, node labels)
-    tree.render("./assets/styled_phylogenetic_tree.png", w=800, units="px", tree_style=ts)
+    tree.render("./assets/styled_phylogenetic_tree.svg", w=1200, units="px", tree_style=ts)
 
 def main():
     parser = argparse.ArgumentParser(description="Generate a phylogenetic tree")

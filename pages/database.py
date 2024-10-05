@@ -5,6 +5,7 @@ from dash import dash_table
 from dash import callback
 from dash.dependencies import Input, Output, State
 import dash_bootstrap_components as dbc
+import plotly.graph_objects as go
 import plotly.express as px
 
 import os
@@ -87,11 +88,49 @@ db_content_dropdown_options = [
     {'label': 'Species', 'value': 'Species'}
 ]
 
-if os.path.exists('/assets/styled_phylogenetic_tree.png'):
-    phylo_img = html.Img(src="/assets/styled_phylogenetic_tree.png", style={"width": "100%", "height": "auto"})
+if os.path.exists('/app/assets/styled_phylogenetic_tree.svg'):
+    # Embed the phylogenetic tree in a plotly figure
+    # phylo_img = html.Img(src="/assets/styled_phylogenetic_tree.svg", style={"width": "100%", "height": "auto"})
+    phylo_img = go.Figure()
+
+    phylo_img.update_layout(
+    images=[
+        dict(
+            source='/assets/styled_phylogenetic_tree.svg',  # Should be no /app, this is a url
+            xref="x",
+            yref="y",
+            x=0,
+            y=0,
+            sizex=5,
+            sizey=5,
+            sizing="stretch",
+            opacity=1.0,
+            layer="below",
+            )
+    ],
+    xaxis=dict(
+        range=[0, 5],
+        showgrid=False,  # Optionally hide the grid
+        zeroline=False,  # Optionally hide the zero line
+        showticklabels=False,  # Hide tick labels
+    ),
+    yaxis=dict(
+        range=[-5, 0],
+        scaleanchor="x",  # Ensures the aspect ratio is maintained
+        showgrid=False,  # Optionally hide the grid
+        zeroline=False,  # Optionally hide the zero line
+        showticklabels=False,  # Hide tick labels
+    ),
+    margin=dict(l=0, r=0, t=0, b=0),  # Adjust margins if necessary
+    plot_bgcolor='white',   # Set the plot area background color to white
+    paper_bgcolor='white',   # Set the overall figure background color to white
+    )
+
+
 else:
     phylo_img = None
-# Count of Spectra, Bar Chart of Taxonomy
+
+
 DATABASE_CONTENTS = [
     dbc.CardHeader(html.H5("Database Contents")),
     dbc.CardBody(
@@ -110,9 +149,12 @@ DATABASE_CONTENTS = [
             # Horizontal bar to seperate
             html.Hr(),
 
-            # Render Phylogenetic Tree (png)
+            # Render Phylogenetic Tree (svg)
             # Don't display if it doesn't exist
-            phylo_img
+            
+            dcc.Graph(figure=phylo_img) if phylo_img is not None else None,
+            # Download button
+            html.A('Download Phylogenetic Tree', href="/assets/styled_phylogenetic_tree.svg", download="styled_phylogenetic_tree.svg") if phylo_img is not None else None,
         ]
     )
 ]

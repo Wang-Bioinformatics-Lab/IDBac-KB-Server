@@ -75,11 +75,11 @@ def task_summarize_depositions():
     # Saving the summary
     df.to_csv("database/summary.tsv", index=False, sep="\t")
 
-    # Calling the nextflow script
-    task_summarize_nextflow.delay()
-
     # Generate the phylogenetic tree
     generate_tree(df.loc[df['NCBI taxid'].notna(), 'NCBI taxid'].astype(int).unique())
+
+    # Calling the nextflow script
+    task_summarize_nextflow.delay()
 
     # Then we need to copy the files back from the right location
     return "Done"
