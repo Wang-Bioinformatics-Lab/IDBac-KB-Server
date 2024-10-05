@@ -1,7 +1,7 @@
 .page-container {
     position: relative;
     height: 100vh;
-    overflow: hidden;
+    overflow: auto;
     background-color: white; /* Optional: to ensure there's a white background around the image */
 }
 
@@ -73,4 +73,5 @@
     border-radius: 1px;
     border: 1px solid #6f6f6f;
     margin-top: 5px;
+    min-height: 150px;
 }
