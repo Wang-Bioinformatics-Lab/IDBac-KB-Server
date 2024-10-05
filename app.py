@@ -105,13 +105,6 @@ NAVBAR = dbc.Navbar(
             html.Img(src="../assets/GNPS2xIDBac.png", width="240px", style={"padding-left": "15px"}),
             href="https://gnps2.org"
         ),
-        dbc.Nav(
-            [
-                dbc.NavItem(dbc.NavLink("Home", href="/")),
-                dbc.NavItem(dbc.NavLink("Database", href="/database")),
-                dbc.NavItem(dbc.NavLink("Download Summary", href="https://idbac.org/api/spectra")), # Must use full url to have 'get' request
-            ],
-        navbar=True)
     ],
     color="light",
     dark=False,

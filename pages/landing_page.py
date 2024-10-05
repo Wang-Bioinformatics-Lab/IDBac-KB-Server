@@ -11,13 +11,13 @@ register_page(
     path='/'
 )
 
-TAGLINE = "A platform for the deposition, analysis, and visualization of bacterial natural product biosynthetic gene clusters"
+TAGLINE = "A place to ID bacteria, organize strain collections & ask reasearch questions."
 
-text_under_button1 = ""
-text_under_button2 = ""
-text_under_button3 = ""
-text_under_button4 = ""
-text_under_button5 = ""
+text_under_button1 = "Upload and analyze your MALDI-TOF MS data: protein dendrograms, metabolite association networks, or heatmaps."
+text_under_button2 = "Deposit spectra of genetically verified strains to the public IDBac database."
+text_under_button3 = "Explore number and type of strains in the database and their associated metadata."
+text_under_button4 = "Interested in IDBac but not ready to commit? Explore the IDBac platform using a sample dataset."
+text_under_button5 = "Click here to access instructions on how to use IDBac."
 
 BUTTONS = dbc.Col(
     dbc.Row(
@@ -25,48 +25,48 @@ BUTTONS = dbc.Col(
             dbc.Col(
                 [
                     dbc.Button(
-                        "View Database", color="primary", className="m-2 button-fixed", href="/database"
-                        ), 
-                    html.P(text_under_button1),
-                ],
-                width=BUTTON_COL_WIDTH),
-            dbc.Col(
-                [
-                    dbc.Button(
-                        "Deposit Data", color="primary", className="m-2 button-fixed", href="https://gnps2.org/workflowinput?workflowname=idbacdeposition_workflow"
-                        ), 
-                    html.P(text_under_button2),
-                ],
-                    width=BUTTON_COL_WIDTH),
-            dbc.Col(
-                [
-                    dbc.Button(
-                        "Analyze Data", color="primary", className="m-2 button-fixed", href="https://gnps2.org/workflowinput?workflowname=idbac_analysis_workflow"
+                        "View Database", color="primary", className="m-2 button-fixed button-blue", href="/database"
                     ), 
-                    html.P(text_under_button3),
+                    html.P(text_under_button1, className="grey-box"),
                 ],
                 width=BUTTON_COL_WIDTH),
             dbc.Col(
                 [
                     dbc.Button(
-                        "Interactive Interface", color="primary", className="m-2 button-fixed", href="https://analysis.idbac.org/"
-                    ),
-                    html.P(text_under_button4),
+                        "Deposit Data", color="primary", className="m-2 button-fixed button-blue", href="https://gnps2.org/workflowinput?workflowname=idbacdeposition_workflow"
+                    ), 
+                    html.P(text_under_button2, className="grey-box"),
                 ],
                 width=BUTTON_COL_WIDTH),
             dbc.Col(
                 [
                     dbc.Button(
-                        "Documentation", color="primary", className="m-2 button-fixed", href="https://wang-bioinformatics-lab.github.io/GNPS2_Documentation/idbacdepositions/"
+                        "Analyze Data", color="primary", className="m-2 button-fixed button-grey", href="https://gnps2.org/workflowinput?workflowname=idbac_analysis_workflow"
+                    ), 
+                    html.P(text_under_button3, className="grey-box"),
+                ],
+                width=BUTTON_COL_WIDTH),
+            dbc.Col(
+                [
+                    dbc.Button(
+                        "Interactive Interface", color="primary", className="m-2 button-fixed button-grey", href="https://analysis.idbac.org/"
                     ),
-                    html.P(text_under_button5),
+                    html.P(text_under_button4, className="grey-box"),
+                ],
+                width=BUTTON_COL_WIDTH),
+            dbc.Col(
+                [
+                    dbc.Button(
+                        "Documentation", color="primary", className="m-2 button-fixed button-grey", href="https://wang-bioinformatics-lab.github.io/GNPS2_Documentation/idbacdepositions/"
+                    ),
+                    html.P(text_under_button5, className="grey-box"),
                 ],
                 width=BUTTON_COL_WIDTH),
         ],
         justify="center",
         className="my-4"
     ),
-    width='75%'
+    width='80%'
 )
 
 # Define the body with buttons and some content
@@ -89,6 +89,8 @@ def layout(**kwargs):
             html.Div(
                 children=[
                     html.H3(TAGLINE, className="tagline text-center"),
+                    html.Br(),
+                    html.Hr(),
                     BODY
                 ],
                 className="content"
