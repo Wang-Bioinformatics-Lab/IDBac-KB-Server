@@ -2,8 +2,6 @@ import dash
 from dash import html, register_page
 import dash_bootstrap_components as dbc
 
-BUTTON_COL_WIDTH=2
-
 register_page(
     __name__,
     name='IDBac',
@@ -29,7 +27,8 @@ BUTTONS = dbc.Col(
                     ), 
                     html.P(text_under_button1, className="grey-box"),
                 ],
-                width=BUTTON_COL_WIDTH),
+                xs=12, sm=12, md=6, lg=2, xl=2  # Full width on mobile, one row on desktop
+            ),
             dbc.Col(
                 [
                     dbc.Button(
@@ -37,7 +36,8 @@ BUTTONS = dbc.Col(
                     ), 
                     html.P(text_under_button2, className="grey-box"),
                 ],
-                width=BUTTON_COL_WIDTH),
+                xs=12, sm=12, md=6, lg=2, xl=2
+            ),
             dbc.Col(
                 [
                     dbc.Button(
@@ -45,7 +45,8 @@ BUTTONS = dbc.Col(
                     ), 
                     html.P(text_under_button3, className="grey-box"),
                 ],
-                width=BUTTON_COL_WIDTH),
+                xs=12, sm=12, md=6, lg=2, xl=2
+            ),
             dbc.Col(
                 [
                     dbc.Button(
@@ -53,7 +54,8 @@ BUTTONS = dbc.Col(
                     ),
                     html.P(text_under_button4, className="grey-box"),
                 ],
-                width=BUTTON_COL_WIDTH),
+                xs=12, sm=12, md=6, lg=2, xl=2
+            ),
             dbc.Col(
                 [
                     dbc.Button(
@@ -61,13 +63,15 @@ BUTTONS = dbc.Col(
                     ),
                     html.P(text_under_button5, className="grey-box"),
                 ],
-                width=BUTTON_COL_WIDTH),
+                xs=12, sm=12, md=6, lg=2, xl=2
+            ),
         ],
         justify="center",
         className="my-4"
     ),
-    width='80%'
+    width='100%'
 )
+
 
 # Define the body with buttons and some content
 BODY = dbc.Container(
