@@ -10,8 +10,6 @@ from tqdm import tqdm
 import glob
 import numpy as np
 
-bin_size = 1.0
-
 def load_data(input_filename):
     try:
         ms1_df, ms2_df = msql_fileloading.load_data(input_filename)
@@ -61,7 +59,7 @@ def load_data(input_filename):
 
     return ms1_df, ms2_df
 
-def load_database(database_mzML, database_scan_mapping_tsv, merge_replicates="Yes"):
+def load_database(database_mzML, database_scan_mapping_tsv, merge_replicates="Yes", bin_size=1.0):
     # Reading Data
     db_spectra, _ = load_data(database_mzML)
     db_scan_mapping_df = pd.read_csv(database_scan_mapping_tsv, sep="\t")
@@ -124,7 +122,7 @@ def load_database(database_mzML, database_scan_mapping_tsv, merge_replicates="Ye
     return merged_spectra_df
 
 
-def output_database(database_df, output_mgf_filename, output_scan_mapping, output_spectra_folder):
+def output_database(database_df, output_mgf_filename, output_scan_mapping, output_spectra_folder, bin_size=1.0):
     database_id_to_scan_list = []
 
     with open(output_mgf_filename, "w") as o:
@@ -189,11 +187,14 @@ def main():
     parser.add_argument('output_database_mgf', help="This is the merged database file output as an MGF file")
     parser.add_argument('output_mapping', help="This is the output tsv mapping from database_id to scan number in the MGF file")
     parser.add_argument('output_spectra_json', help="This is where we output the processed data as individual json files")
+    parser.add_argument('--bin_size', default=1.0, type=float, help="The bin size to use for binning the data")
     
     args = parser.parse_args()
 
+    bin_size = float(args.bin_size)
+
     # Loading the database, this will also merge the spectra
-    database_df = load_database(args.database_mzML, args.database_scan_mapping_tsv, merge_replicates="Yes")
+    database_df = load_database(args.database_mzML, args.database_scan_mapping_tsv, merge_replicates="Yes", bin_size=bin_size)
 
     # Create a row count column, starting at 0, counting all the way up, will be useful for keeping track of things when we do matrix multiplication
     database_df["row_count"] = np.arange(len(database_df))
@@ -202,7 +203,7 @@ def main():
     database_df["filename"] = os.path.basename(args.database_mzML)
 
     # Writing out the database itself so that we can more easily visualize it
-    output_database(database_df, args.output_database_mgf, args.output_mapping, args.output_spectra_json)
+    output_database(database_df, args.output_database_mgf, args.output_mapping, args.output_spectra_json, bin_size=bin_size)
 
 
 

@@ -2,6 +2,7 @@
 nextflow.enable.dsl=2
 
 params.input_database = ""
+params.bin_size = 10.0
 
 TOOL_FOLDER = "$baseDir/bin"
 
@@ -66,7 +67,8 @@ process mergeSpectra {
     $idbac_database_scan_mapping \
     output_database.mgf \
     output_mapping.tsv \
-    output_spectra_json
+    output_spectra_json \
+    --bin_size ${params.bin_size}
     """
 }
 
