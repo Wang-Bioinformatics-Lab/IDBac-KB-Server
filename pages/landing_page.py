@@ -23,7 +23,7 @@ BUTTONS = dbc.Col(
             dbc.Col(
                 [
                     dbc.Button(
-                        "View Database", color="primary", className="m-2 button-fixed button-blue", href="/database"
+                        "Analyze Data", color="primary", className="m-2 button-fixed button-blue", href="/database"
                     ), 
                     html.P(text_under_button1, className="grey-box"),
                 ],
@@ -41,7 +41,7 @@ BUTTONS = dbc.Col(
             dbc.Col(
                 [
                     dbc.Button(
-                        "Analyze Data", color="primary", className="m-2 button-fixed button-grey", href="https://gnps2.org/workflowinput?workflowname=idbac_analysis_workflow"
+                        "View Database", color="primary", className="m-2 button-fixed button-grey", href="https://gnps2.org/workflowinput?workflowname=idbac_analysis_workflow"
                     ), 
                     html.P(text_under_button3, className="grey-box"),
                 ],
