@@ -1,4 +1,5 @@
 from ete3 import NCBITaxa
+import pandas as pd
 import requests
 import xmltodict
 from time import sleep
@@ -41,7 +42,14 @@ def get_taxonomy_lineage_genbank(genbank_accession):
     taxonomy = result_dictionary["GBSet"]["GBSeq"]["GBSeq_taxonomy"]
     organism = result_dictionary["GBSet"]["GBSeq"]["GBSeq_organism"]
 
-    return taxonomy + "; " + organism
+    sourced_taxid = ""
+    # Find <GBQualifier_value>taxon:156453</GBQualifier_value> in text (not going to parse that)
+    try:
+        sourced_taxid = r.text.split("<GBQualifier_value>taxon:")[1].split("</GBQualifier_value>")[0]
+    except:
+        pass
+
+    return taxonomy + "; " + organism, sourced_taxid
 
 
 def get_taxonomy_lineage_ncbi(taxid, ncbi_taxa):
@@ -94,16 +102,17 @@ def get_taxonomy(spectra_entry, ncbi_taxa):
     ncbi_taxid = spectra_entry.get("NCBI taxid", "")
 
     taxonomy = ""
+    sourced_ncbi_taxid = ""
     if genbank_accession != "":
         # Prioritize genbank accession
         try:
-            taxonomy = get_taxonomy_lineage_genbank(genbank_accession)
+            taxonomy, sourced_ncbi_taxid = get_taxonomy_lineage_genbank(genbank_accession)
         except Exception as e:
             print("Exception while getting taxonomy for Genbank accession", genbank_accession, flush=True)
             print(e, flush=True)
 
         if taxonomy != "":
-            return taxonomy
+            return taxonomy, sourced_ncbi_taxid
 
     if ncbi_taxid != "":
         # Use the NCBI taxid as a fallback
@@ -115,14 +124,14 @@ def get_taxonomy(spectra_entry, ncbi_taxa):
             print(e, flush=True)
 
         if taxonomy != "":
-            return taxonomy
+            return taxonomy, ncbi_taxid
         
     # Final fallback to 16S Taxonomy
     if "16S Taxonomy" in spectra_entry:
         if spectra_entry["16S Taxonomy"] is not None and spectra_entry["16S Taxonomy"] != "":
             taxonomy = spectra_entry["16S Taxonomy"].strip() + " (User Submitted 16S)"
 
-    return taxonomy
+    return taxonomy, ""
         
 def populate_taxonomies(spectra_list):
     """Populates the FullTaxonomy field in each spectra entry in the spectra list.
@@ -140,10 +149,13 @@ def populate_taxonomies(spectra_list):
 
     for spectra_entry in spectra_list:
         try:
-            taxonomy_string = get_taxonomy(spectra_entry, ncbi_taxa)
+            taxonomy_string, ncbi_tax_id = get_taxonomy(spectra_entry, ncbi_taxa)
             sleep(0.2)
 
             spectra_entry["FullTaxonomy"] = taxonomy_string
+            if spectra_entry['NCBI taxid'] == "" or pd.isna(spectra_entry['NCBI taxid']):
+                if ncbi_tax_id != "":
+                    spectra_entry['NCBI taxid'] = ncbi_tax_id
         except:
             pass
 
