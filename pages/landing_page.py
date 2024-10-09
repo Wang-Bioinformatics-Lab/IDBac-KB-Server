@@ -67,7 +67,7 @@ BUTTONS = dbc.Col(
             ),
         ],
         justify="center",
-        className="my-4"
+        className="button-container"
     ),
     width='100%'
 )
@@ -83,7 +83,7 @@ BODY = dbc.Container(
         )
     ],
     fluid=True,
-    className="content",
+    className="body",
 )
 
 def layout(**kwargs):
@@ -96,8 +96,7 @@ def layout(**kwargs):
                     html.Br(),
                     html.Hr(),
                     BODY
-                ],
-                className="content"
+                ], className="page-content"
             )
         ],
         className="page-container"
