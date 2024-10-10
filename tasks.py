@@ -78,7 +78,7 @@ def task_summarize_depositions():
     df.to_csv("database/summary.tsv", index=False, sep="\t")
 
     # Update taxonomic tree
-    generate_tree(df['NCBI taxid'])
+    generate_tree(df[df['NCBI taxid'].notna()]['NCBI taxid'])
 
     # Calling the nextflow script
     task_summarize_nextflow.delay()

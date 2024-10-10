@@ -169,7 +169,7 @@ def generate_tree(taxid_list):
     from PyQt5 import QtGui
 
     taxid_list = list(set(taxid_list))
-    taxid_list = [x for x in taxid_list if x is not None and x != "" and not np.isnan(x)]
+    taxid_list = [x for x in taxid_list if x is not None and x != ""]
 
     svg_path = "/app/assets/tree.svg"
     png_path = "/app/assets/tree.png"
