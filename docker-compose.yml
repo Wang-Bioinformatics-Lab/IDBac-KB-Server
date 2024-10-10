@@ -9,6 +9,7 @@ services:
       - ./logs:/app/logs:rw
       - ./database:/app/database:ro
       - ./workflows:/app/workflows:ro
+      - ./assets:/app/assets:ro
     ports:
     - "5392:5000"
     networks:
@@ -31,6 +32,7 @@ services:
       - ./logs:/app/logs:rw
       - ./database:/app/database:rw
       - ./workflows:/app/workflows:rw
+      - ./assets:/app/assets:rw
     command: /app/run_worker.sh
     restart: unless-stopped
     depends_on: 

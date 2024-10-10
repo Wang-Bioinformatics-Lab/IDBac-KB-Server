@@ -1,7 +1,11 @@
 from ete3 import NCBITaxa
+from ete3 import Tree, TreeStyle
+import numpy as np
+import pandas as pd
 import requests
 import xmltodict
 from time import sleep
+import os
 
 def get_taxonomy_lineage_genbank(genbank_accession):
     """Gets the taxonomic lineage string using a genbank accession. Each genbank
@@ -41,7 +45,14 @@ def get_taxonomy_lineage_genbank(genbank_accession):
     taxonomy = result_dictionary["GBSet"]["GBSeq"]["GBSeq_taxonomy"]
     organism = result_dictionary["GBSet"]["GBSeq"]["GBSeq_organism"]
 
-    return taxonomy + "; " + organism
+    sourced_taxid = ""
+    # Find <GBQualifier_value>taxon:156453</GBQualifier_value> in text (not going to parse that)
+    try:
+        sourced_taxid = r.text.split("<GBQualifier_value>taxon:")[1].split("</GBQualifier_value>")[0]
+    except:
+        pass
+
+    return taxonomy + "; " + organism, sourced_taxid
 
 
 def get_taxonomy_lineage_ncbi(taxid, ncbi_taxa):
@@ -94,16 +105,17 @@ def get_taxonomy(spectra_entry, ncbi_taxa):
     ncbi_taxid = spectra_entry.get("NCBI taxid", "")
 
     taxonomy = ""
+    sourced_ncbi_taxid = ""
     if genbank_accession != "":
         # Prioritize genbank accession
         try:
-            taxonomy = get_taxonomy_lineage_genbank(genbank_accession)
+            taxonomy, sourced_ncbi_taxid = get_taxonomy_lineage_genbank(genbank_accession)
         except Exception as e:
             print("Exception while getting taxonomy for Genbank accession", genbank_accession, flush=True)
             print(e, flush=True)
 
         if taxonomy != "":
-            return taxonomy
+            return taxonomy, sourced_ncbi_taxid
 
     if ncbi_taxid != "":
         # Use the NCBI taxid as a fallback
@@ -115,14 +127,14 @@ def get_taxonomy(spectra_entry, ncbi_taxa):
             print(e, flush=True)
 
         if taxonomy != "":
-            return taxonomy
+            return taxonomy, ncbi_taxid
         
     # Final fallback to 16S Taxonomy
     if "16S Taxonomy" in spectra_entry:
         if spectra_entry["16S Taxonomy"] is not None and spectra_entry["16S Taxonomy"] != "":
             taxonomy = spectra_entry["16S Taxonomy"].strip() + " (User Submitted 16S)"
 
-    return taxonomy
+    return taxonomy, ""
         
 def populate_taxonomies(spectra_list):
     """Populates the FullTaxonomy field in each spectra entry in the spectra list.
@@ -140,11 +152,52 @@ def populate_taxonomies(spectra_list):
 
     for spectra_entry in spectra_list:
         try:
-            taxonomy_string = get_taxonomy(spectra_entry, ncbi_taxa)
+            taxonomy_string, ncbi_tax_id = get_taxonomy(spectra_entry, ncbi_taxa)
             sleep(0.2)
 
             spectra_entry["FullTaxonomy"] = taxonomy_string
+            if spectra_entry['NCBI taxid'] == "" or pd.isna(spectra_entry['NCBI taxid']):
+                if ncbi_tax_id != "":
+                    spectra_entry['NCBI taxid'] = ncbi_tax_id
         except:
             pass
 
     return spectra_list
+
+def generate_tree(taxid_list):
+    os.environ['QT_QPA_PLATFORM']='offscreen'
+    from PyQt5 import QtGui
+
+    taxid_list = list(set(taxid_list))
+    taxid_list = [x for x in taxid_list if x is not None and x != "" and not np.isnan(x)]
+
+    svg_path = "/app/assets/tree.svg"
+    png_path = "/app/assets/tree.png"
+
+    # Initialize NCBI Taxa database
+    ncbi = NCBITaxa()
+
+    # Fetch the tree topology based on these taxids
+    tree = ncbi.get_topology(taxid_list)
+
+    # Make it a circular tree
+    ts = TreeStyle()
+    ts.show_leaf_name = False
+    ts.show_branch_support = False
+    ts.show_scale = False
+    ts.mode = "c"
+
+    all_taxids = [int(node.name) for node in tree.traverse() if node.is_leaf()]
+
+    # Get a mapping of TaxIDs to their taxonomic names
+    taxid2name = ncbi.get_taxid_translator(all_taxids)
+
+    for node in tree.traverse():
+        if node.is_leaf():
+            taxid = int(node.name)
+            if taxid in taxid2name:
+                node.name = ""  # Clear the original name
+                node.name = " " + taxid2name[taxid]  # Set to taxonomic name
+
+    tree.render(svg_path, w=1200, units="px", tree_style=ts)
+    tree.render(png_path, w=1200, units="px", tree_style=ts)

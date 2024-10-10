@@ -356,6 +356,20 @@ def nextflow_report():
         return send_from_directory("/app/workflows/idbac_summarize_database", "IDBac_summarize_database_report.html")
     else:
         return "No Report Found", 404
+    
+@server.route("/download_tree_png", methods=["GET"])
+def download_tree_png():
+    if os.path.exists("/app/assets/tree.png"):
+        return send_from_directory("/app/assets", "tree.png")
+    else:
+        return "No Image Found", 404
+
+@server.route("/download_tree_svg", methods=["GET"])
+def download_tree_svg():
+    if os.path.exists("/app/assets/tree.svg"):
+        return send_from_directory("/app/assets", "tree.svg")
+    else:
+        return "No Image Found", 404
 
 def _get_processed_spectrum(database_id):
     # Finding all the database files

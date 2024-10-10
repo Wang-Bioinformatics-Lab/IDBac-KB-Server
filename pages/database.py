@@ -87,6 +87,36 @@ db_content_dropdown_options = [
     {'label': 'Species', 'value': 'Species'}
 ]
 
+tax_tree = None
+try:
+    if not os.path.exists("/app/assets/tree.png"):
+        raise FileNotFoundError()
+    tax_tree = html.Div(
+                [
+                    html.H5("Taxonomic Tree"),
+                    html.Img(src="/download_tree_png", style={"width": "100%"}),
+                ]
+            )
+except Exception as e:
+    print("Error loading taxonomic tree", e)
+    tax_tree = None
+
+TREE_DOWNLOAD_BUTTONS = dbc.Row(
+                                [   # The buttons linking to images aren't playing nicely here, so use html.A instead
+                                    dbc.Col(
+                                        html.A(dbc.Button("Download SVG", color="primary", className="mr-1"),
+                                                href="/download_tree_svg"),
+                                        width="auto"
+                                    ),
+                                    dbc.Col(
+                                        html.A(dbc.Button("Download PNG", color="primary", className="mr-1"),
+                                                href="/download_tree_png"),
+                                        width="auto"
+                                    )
+                                ],
+                                justify="center"  # This centers the columns in the row
+                            )
+
 # Count of Spectra, Bar Chart of Taxonomy
 DATABASE_CONTENTS = [
     dbc.CardHeader(html.H5("Database Contents")),
@@ -101,7 +131,13 @@ DATABASE_CONTENTS = [
             ),
             
             # pie chart (dynamic, controlled by dropdown)
-            dcc.Graph(id="dynamic-taxonomy-pie-chart")
+            dcc.Graph(id="dynamic-taxonomy-pie-chart"),
+            # Horizontal line
+            html.Hr() if tax_tree else None,
+            # Taxonomic tree
+            tax_tree,
+            # Download buttons
+            TREE_DOWNLOAD_BUTTONS if tax_tree else None
         ]
     )
 ]

@@ -21,3 +21,4 @@ python-dotenv
 xmltodict
 ete3
 six
+PyQt5
