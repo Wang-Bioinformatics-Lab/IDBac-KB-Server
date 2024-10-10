@@ -1,8 +1,11 @@
 from ete3 import NCBITaxa
+from ete3 import Tree, TreeStyle
+import numpy as np
 import pandas as pd
 import requests
 import xmltodict
 from time import sleep
+import os
 
 def get_taxonomy_lineage_genbank(genbank_accession):
     """Gets the taxonomic lineage string using a genbank accession. Each genbank
@@ -160,3 +163,41 @@ def populate_taxonomies(spectra_list):
             pass
 
     return spectra_list
+
+def generate_tree(taxid_list):
+    os.environ['QT_QPA_PLATFORM']='offscreen'
+    from PyQt5 import QtGui
+
+    taxid_list = list(set(taxid_list))
+    taxid_list = [x for x in taxid_list if x is not None and x != "" and not np.isnan(x)]
+
+    svg_path = "/app/assets/tree.svg"
+    png_path = "/app/assets/tree.png"
+
+    # Initialize NCBI Taxa database
+    ncbi = NCBITaxa()
+
+    # Fetch the tree topology based on these taxids
+    tree = ncbi.get_topology(taxid_list)
+
+    # Make it a circular tree
+    ts = TreeStyle()
+    ts.show_leaf_name = False
+    ts.show_branch_support = False
+    ts.show_scale = False
+    ts.mode = "c"
+
+    all_taxids = [int(node.name) for node in tree.traverse() if node.is_leaf()]
+
+    # Get a mapping of TaxIDs to their taxonomic names
+    taxid2name = ncbi.get_taxid_translator(all_taxids)
+
+    for node in tree.traverse():
+        if node.is_leaf():
+            taxid = int(node.name)
+            if taxid in taxid2name:
+                node.name = ""  # Clear the original name
+                node.name = " " + taxid2name[taxid]  # Set to taxonomic name
+
+    tree.render(svg_path, w=1200, units="px", tree_style=ts)
+    tree.render(png_path, w=1200, units="px", tree_style=ts)

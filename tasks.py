@@ -8,7 +8,7 @@ import pandas as pd
 import requests
 import requests_cache
 import xmltodict
-from utils import populate_taxonomies
+from utils import populate_taxonomies, generate_tree
 
 celery_instance = Celery('tasks', backend='redis://idbac-kb-redis', broker='pyamqp://guest@idbac-kb-rabbitmq//', )
 
@@ -76,6 +76,9 @@ def task_summarize_depositions():
 
     # Saving the summary
     df.to_csv("database/summary.tsv", index=False, sep="\t")
+
+    # Update taxonomic tree
+    generate_tree(df['NCBI taxid'])
 
     # Calling the nextflow script
     task_summarize_nextflow.delay()
