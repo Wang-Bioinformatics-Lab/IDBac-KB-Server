@@ -95,7 +95,7 @@ try:
     tax_tree = html.Div(
                 [
                     html.H5("Taxonomic Tree"),
-                    html.Img(src="/download_tree_png", style={"width": "100%"}),
+                    html.Img(src="/download_tree_png", style={"width": "75%", 'margin':'auto', 'display':'flex'}),
                 ]
             )
 except Exception as e:
