@@ -5,6 +5,7 @@ from dash import dash_table
 from dash import callback
 from dash.dependencies import Input, Output, State
 import dash_bootstrap_components as dbc
+import plotly
 import plotly.express as px
 
 import os
@@ -56,7 +57,7 @@ DATASELECTION_CARD = [
     )
 ]
 
-LEFT_DASHBOARD = [
+DB_DISPLAY_DASHBOARD = [
     html.Div(
         [
             html.Div(DATASELECTION_CARD),
@@ -194,7 +195,7 @@ BODY = dbc.Container(
         dcc.Location(id='url', refresh=False),
         dbc.Row([
             dbc.Col(
-                dbc.Card(LEFT_DASHBOARD),
+                dbc.Card(DB_DISPLAY_DASHBOARD),
                 className="w-100"
             ),
         ], style={"marginTop": 30}),
@@ -202,28 +203,16 @@ BODY = dbc.Container(
             dbc.Col(
                 [
                     dbc.Card(MIDDLE_DASHBOARD),
+                    dbc.Card(ADDITIONAL_DATA, style={"marginTop": 30}),
                 ],
                 className="w-50"
             ),
             dbc.Col(
                 [
                     dbc.Card(DATABASE_CONTENTS),
+                    dbc.Card(CONTRIBUTORS_DASHBOARD, style={"marginTop": 30}),
                 ],
                 className="w-50"
-            ),
-        ], style={"marginTop": 30}),
-        dbc.Row([
-            dbc.Col(
-                [
-                    dbc.Card(ADDITIONAL_DATA),
-                ],
-                className="w-50",
-            ),
-            dbc.Col(
-                [
-                    dbc.Card(CONTRIBUTORS_DASHBOARD)
-                ],
-                className="w-50",
             ),
         ], style={"marginTop": 30}),
     ],
