@@ -11,6 +11,20 @@
     flex-shrink: 0;
     left: 50%;
     width: auto;
+    height: 175px;
+    transform: translateX(-50%);
+    background-image: url('/assets/idbac_logo.png');
+    background-size: contain;
+    background-position: center;
+    background-repeat: no-repeat;
+}
+
+.subheader-image {
+    position: relative;
+    display: flex;
+    flex-shrink: 0;
+    left: 50%;
+    width: auto;
     height: 500px;
     transform: translateX(-50%);
     background-image: url('/assets/header.png');

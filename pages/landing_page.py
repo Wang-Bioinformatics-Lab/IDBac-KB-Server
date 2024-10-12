@@ -90,9 +90,10 @@ def layout(**kwargs):
     return html.Div(
         children=[
             html.Div(className="header-image"),
+            html.H3(TAGLINE, className="tagline text-center"),
+            html.Div(className="subheader-image"),
             html.Div(
                 children=[
-                    html.H3(TAGLINE, className="tagline text-center"),
                     html.Br(),
                     html.Hr(),
                     BODY
