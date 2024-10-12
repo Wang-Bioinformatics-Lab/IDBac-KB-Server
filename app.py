@@ -304,6 +304,10 @@ def deposit():
     # Enable this call to be blocking
     return "DONE"
 
+@server.route("/api/db-checksum", methods=["GET"])
+def checksum():
+    return send_from_directory("/app/workflows/idbac_summarize_database/nf_output/", "idbac_database.json.sha256")
+
 @server.route("/api/spectrum", methods=["GET"])
 def download():
     # Getting a single spectrum

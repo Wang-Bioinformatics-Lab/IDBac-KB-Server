@@ -9,6 +9,7 @@ import requests
 import requests_cache
 import xmltodict
 from utils import populate_taxonomies, generate_tree
+from utils import calculate_checksum
 
 celery_instance = Celery('tasks', backend='redis://idbac-kb-redis', broker='pyamqp://guest@idbac-kb-rabbitmq//', )
 
@@ -83,7 +84,11 @@ def task_summarize_depositions():
     # Calling the nextflow script
     task_summarize_nextflow.delay()
 
-    # Then we need to copy the files back from the right location
+    # Calculate checksum for the database
+    checksum = calculate_checksum("/app/workflows/idbac_summarize_database/nf_output/idbac_database.json")
+    with open("/app/workflows/idbac_summarize_database/nf_output/idbac_database.json.sha256", "w") as f:
+        f.write(checksum)
+
     return "Done"
 
 

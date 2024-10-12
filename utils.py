@@ -5,6 +5,7 @@ import pandas as pd
 import requests
 import xmltodict
 from time import sleep
+import hashlib
 import os
 
 def get_taxonomy_lineage_genbank(genbank_accession):
@@ -211,3 +212,23 @@ def generate_tree(taxid_list):
 
     tree.render(svg_path, w=1200, units="px", tree_style=ts)
     tree.render(png_path, w=1200, units="px", tree_style=ts)
+
+def calculate_checksum(file_path, algorithm='sha256', chunk_size=65536):
+    """
+    Calculate the checksum of a file.
+
+    Args:
+        file_path (str): The path to the file.
+        algorithm (str): The hashing algorithm to use. Defaults to 'sha256'.
+        chunk_size (int): The size of the chunks to read from the file. Defaults to 65536.
+    
+    Returns:
+        str: The checksum of the file
+    """
+    hash_function = hashlib.new(algorithm)
+    
+    with open(file_path, 'rb') as file:
+        while chunk := file.read(chunk_size):
+            hash_function.update(chunk)
+    
+    return hash_function.hexdigest()
