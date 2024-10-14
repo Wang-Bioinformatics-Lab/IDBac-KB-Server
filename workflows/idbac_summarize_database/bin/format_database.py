@@ -68,6 +68,12 @@ def main():
 
     # Saving JSON
     with open(args.output_library_json, "w") as output_file:
+        # Replace all NaN values with "Nan"
+        for spectrum in output_spectra_list:
+            for key in spectrum:
+                if pd.isna(spectrum[key]):
+                    spectrum[key] = "NaN"
+
         json.dump(output_spectra_list, output_file, indent=4)
 
     # Saving scan mapping
