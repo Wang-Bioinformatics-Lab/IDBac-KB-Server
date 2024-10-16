@@ -248,13 +248,22 @@ def update_dynamic_pie_chart(selected_taxonomy):
         # Get counts by Genus and Species for px.bar
         # dynamic_summary_df = dynamic_summary_df.groupby(["Genus", "Species"]).size().reset_index(name="count")
         dynamic_summary_df = dynamic_summary_df.groupby([selected_taxonomy]).size().reset_index(name="count")
-        # Strip the Genus column of whitespace
+        # Strip the column of whitespace
         dynamic_summary_df[selected_taxonomy] = dynamic_summary_df[selected_taxonomy].str.strip()
+
+        if selected_taxonomy == "Genus":
+            dynamic_summary_df["Genus"] = dynamic_summary_df["Genus"].str.split().str[0]
+
+        # Print full dataframe for debugging
+        with pd.option_context('display.max_rows', None, 'display.max_columns', None):  
+            print(dynamic_summary_df[selected_taxonomy].value_counts(), flush=True)
 
         count_16S = dynamic_summary_df[dynamic_summary_df[selected_taxonomy] == "User Submitted 16S"]["count"].sum()
         percent_16S = (count_16S / dynamic_summary_df["count"].sum()) * 100
 
         dynamic_summary_df = dynamic_summary_df[dynamic_summary_df[selected_taxonomy] != "User Submitted 16S"]
+
+        dynamic_summary_df = dynamic_summary_df.loc[~ dynamic_summary_df[selected_taxonomy].isna()]
 
     fig = px.pie(dynamic_summary_df, 
                  values="count", 
