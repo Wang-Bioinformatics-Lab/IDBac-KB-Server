@@ -72,15 +72,39 @@ BUTTONS = dbc.Col(
     width='100%'
 )
 
+# Define the Call-To-Action (CTA) section
+CTA = dbc.Col(
+        dbc.Row(
+        [
+            dbc.Col(
+                [
+                    dbc.Button(
+                        "Sign Up Now", color="primary", className="m-2 button-fixed button-blue", href="https://gnps2.org/user/signup", style={"padding-left": "30px", 
+                                                                                                                                               "padding-right": "30px"}
+                    ),
+                ],
+                xs=12, sm=12, md=12, lg=12, xl=12,  # Always take full width
+            ),
+        ],
+        justify="center",
+        className="cta-container",
+    ), 
+    width='100%',
+)
 
 # Define the body with buttons and some content
 BODY = dbc.Container(
     [
         dbc.CardBody(
             [
-                BUTTONS
+                BUTTONS,
             ]
-        )
+        ),
+        dbc.CardBody(
+            [
+                CTA,
+            ]
+        ),
     ],
     fluid=True,
     className="body",
