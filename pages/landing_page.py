@@ -82,6 +82,12 @@ CTA = dbc.Col(
                         "Sign Up Now", color="primary", className="m-2 button-fixed button-blue", href="https://gnps2.org/user/signup", style={"padding-left": "30px", 
                                                                                                                                                "padding-right": "30px"}
                     ),
+                    # Some hyperlinked text href https://wang-bioinformatics-lab.github.io/GNPS2_Documentation/accounts/#account-creation
+                    html.P(
+                        [
+                            html.A("Need a sign up token?", href="https://wang-bioinformatics-lab.github.io/GNPS2_Documentation/accounts/#account-creation", className="link")
+                        ],
+                    ),
                 ],
                 xs=12, sm=12, md=12, lg=12, xl=12,  # Always take full width
             ),
