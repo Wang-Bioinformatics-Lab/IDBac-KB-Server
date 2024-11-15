@@ -105,6 +105,19 @@ NAVBAR = dbc.Navbar(
             html.Img(src="../assets/GNPS2xIDBac.png", width="240px", style={"padding-left": "15px"}),
             href="https://gnps2.org"
         ),
+        dbc.Nav(
+            dbc.NavItem(
+                dbc.Button(
+                    "Sign Up",
+                    color="primary",
+                    href="https://gnps2.org/user/signup",
+                    style={"padding-left": "30px", "padding-right": "30px", "margin-right": "30px"},
+                    className="button-blue"
+                )
+            ),
+            className="ms-auto",  # Align to the right
+            navbar=True
+        )
     ],
     color="light",
     dark=False,

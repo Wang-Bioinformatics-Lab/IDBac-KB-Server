@@ -1,8 +1,8 @@
 .page-container {
     position: relative;
     height: 100vh;
-    overflow: auto;
-    background-color: white; /* Optional: to ensure there's a white background around the image */
+    overflow: visible;
+    background-color: white;
 }
 
 .header-image {
