@@ -212,6 +212,8 @@ def generate_tree(taxid_list):
 
     tree.render(svg_path, w=1200, units="px", tree_style=ts)
     tree.render(png_path, w=1200, units="px", tree_style=ts)
+    # Save to newick tree format
+    tree.write(format=0, outfile="/app/assets/tree.nwk")
 
 def calculate_checksum(file_path, algorithm='sha256', chunk_size=65536):
     """

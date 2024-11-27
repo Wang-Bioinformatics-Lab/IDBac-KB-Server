@@ -387,6 +387,13 @@ def download_tree_svg():
         return send_from_directory("/app/assets", "tree.svg")
     else:
         return "No Image Found", 404
+    
+@server.route("/download_tree_nwk", methods=["GET"])
+def download_tree_nwk():
+    if os.path.exists("/app/assets/tree.nwk"):
+        return send_from_directory("/app/assets", "tree.nwk")
+    else:
+        return "No Image Found", 404
 
 def _get_processed_spectrum(database_id):
     # Finding all the database files
