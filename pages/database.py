@@ -80,12 +80,12 @@ MIDDLE_DASHBOARD = [
 
 db_content_dropdown_options = [
     # {'label': 'Kingdom', 'value': 'Kingdom'},
-    {'label': 'Phylum', 'value': 'Phylum'},
-    {'label': 'Class', 'value': 'Class'},
-    {'label': 'Order', 'value': 'Order'},
-    {'label': 'Family', 'value': 'Family'},
-    {'label': 'Genus', 'value': 'Genus'},
-    {'label': 'Species', 'value': 'Species'}
+    {'label': 'Phylum', 'value': 'phylum'},
+    {'label': 'Class', 'value': 'class'},
+    {'label': 'Order', 'value': 'order'},
+    {'label': 'Family', 'value': 'family'},
+    {'label': 'Genus', 'value': 'genus'},
+    {'label': 'Species', 'value': 'species'}
 ]
 
 tax_tree = None
@@ -127,12 +127,12 @@ DATABASE_CONTENTS = [
             dcc.Dropdown(
                 id='taxonomy-dropdown',
                 options=db_content_dropdown_options,
-                value='Genus',  # default value
+                value='genus',  # default value
                 clearable=False
             ),
             
             # pie chart (dynamic, controlled by dropdown)
-            dcc.Graph(id="dynamic-taxonomy-pie-chart"),
+            dcc.Graph(id="dynamic-taxonomy-pie-chart"),   # DISABLED FOR DEBUG TODO REMOVE
             # Horizontal line
             html.Hr() if tax_tree else None,
             # Taxonomic tree
@@ -228,35 +228,38 @@ BODY = dbc.Container(
 )
 def update_dynamic_pie_chart(selected_taxonomy):
     dynamic_summary_df = None
+    count_16S = 0
     number_of_database_entries = ""
     if os.path.exists("database/summary.tsv"):
         dynamic_summary_df = pd.read_csv("database/summary.tsv", sep="\t")
-        number_of_database_entries = str(len(dynamic_summary_df))
-        dynamic_summary_df["FullTaxonomy"] = dynamic_summary_df["FullTaxonomy"].fillna("No Taxonomy")
-        not_16S = (~ dynamic_summary_df["FullTaxonomy"].str.contains("User Submitted 16S")) & (~ dynamic_summary_df["FullTaxonomy"].str.contains("No Taxonomy"))
-        is_16S  = dynamic_summary_df["FullTaxonomy"].str.contains("User Submitted 16S")
 
-        dynamic_summary_df.assign(Kingdom="", Phylum="", Class="", Order="", Family="", Genus="", Species="")
-        taxonomy_split = dynamic_summary_df.loc[not_16S, "FullTaxonomy"].str.split(";", n=6, expand=True)
-        taxonomy_split.columns = ["Kingdom", "Phylum", "Class", "Order", "Family", "Genus", "Species"]
-        dynamic_summary_df.loc[not_16S, ["Kingdom", "Phylum", "Class", "Order", "Family", "Genus", "Species"]] = taxonomy_split
+        dynamic_summary_df[selected_taxonomy] = dynamic_summary_df[selected_taxonomy].fillna("No Taxonomy")
         
         # Handle 16S
-        dynamic_summary_df.loc[is_16S, ["Kingdom", "Phylum", "Class", "Order", "Family", "Species"]] = "User Submitted 16S"
-        dynamic_summary_df.loc[is_16S, "Genus"] = dynamic_summary_df.loc[is_16S, "FullTaxonomy"].str.split().str[0]
+        is_16S = (dynamic_summary_df[selected_taxonomy] == "No Taxonomy") & (dynamic_summary_df['16S Taxonomy'].notna())
 
-        # Get counts by Genus and Species for px.bar
-        # dynamic_summary_df = dynamic_summary_df.groupby(["Genus", "Species"]).size().reset_index(name="count")
-        dynamic_summary_df = dynamic_summary_df.groupby([selected_taxonomy]).size().reset_index(name="count")
         # Strip the column of whitespace
         dynamic_summary_df[selected_taxonomy] = dynamic_summary_df[selected_taxonomy].str.strip()
 
-        if selected_taxonomy == "Genus":
-            dynamic_summary_df["Genus"] = dynamic_summary_df["Genus"].str.split().str[0]
+        # Print full dataframe for DEBUG
+        # with pd.option_context('display.max_rows', None, 'display.max_columns', None):  
+        #     print(dynamic_summary_df, flush=True)
 
-        # Print full dataframe for debugging
-        with pd.option_context('display.max_rows', None, 'display.max_columns', None):  
-            print(dynamic_summary_df[selected_taxonomy].value_counts(), flush=True)
+        # If genus, only take the first word
+        if selected_taxonomy == "genus":
+            dynamic_summary_df.loc[is_16S, selected_taxonomy] = dynamic_summary_df.loc[is_16S, "16S Taxonomy"]
+            dynamic_summary_df.loc[dynamic_summary_df["genus"]!="No Taxonomy", "genus"] = dynamic_summary_df.loc[dynamic_summary_df["genus"]!="No Taxonomy", "genus"].str.split().str[0]
+        else:
+            dynamic_summary_df.loc[is_16S, selected_taxonomy] = "User Submitted 16S"
+
+        # Print full dataframe for DEBUG
+        # with pd.option_context('display.max_rows', None, 'display.max_columns', None):  
+        #     print(dynamic_summary_df[selected_taxonomy].value_counts(), flush=True)
+
+        print(dynamic_summary_df.loc[dynamic_summary_df[selected_taxonomy] == 'No Taxonomy'], flush=True)
+
+        # Get counts by Genus and Species for px.bar
+        dynamic_summary_df = dynamic_summary_df.groupby([selected_taxonomy]).size().reset_index(name="count")
 
         count_16S = dynamic_summary_df[dynamic_summary_df[selected_taxonomy] == "User Submitted 16S"]["count"].sum()
         percent_16S = (count_16S / dynamic_summary_df["count"].sum()) * 100
@@ -265,12 +268,14 @@ def update_dynamic_pie_chart(selected_taxonomy):
 
         dynamic_summary_df = dynamic_summary_df.loc[~ dynamic_summary_df[selected_taxonomy].isna()]
 
+
     fig = px.pie(dynamic_summary_df, 
                  values="count", 
                  names=selected_taxonomy,  # Update based on selected taxonomy level
                  title=f"Taxonomy Distribution by {selected_taxonomy}",
                 ).update_traces(textposition='inside').update_layout(uniformtext_minsize=12, uniformtext_mode='hide')
     
+    print("count_16S", count_16S, flush=True)
     if count_16S > 0:
         fig.add_annotation(
             x=0.5,

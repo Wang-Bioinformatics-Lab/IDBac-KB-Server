@@ -71,8 +71,14 @@ def main():
         # Replace all NaN values with "Nan"
         for spectrum in output_spectra_list:
             for key in spectrum:
-                if pd.isna(spectrum[key]):
-                    spectrum[key] = "NaN"
+                try:
+                    if pd.isna(spectrum[key]):
+                        spectrum[key] = "NaN"
+                except Exception as e:
+                    print(e)
+                    print("FAILED TO REPLACE NAN")
+                    print("Key: ", key)
+                    print(spectrum[key])
 
         json.dump(output_spectra_list, output_file, indent=4)
 

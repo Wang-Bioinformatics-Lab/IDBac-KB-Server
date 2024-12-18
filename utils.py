@@ -8,86 +8,219 @@ from time import sleep
 import hashlib
 import os
 
-def get_taxonomy_lineage_genbank(genbank_accession):
-    """Gets the taxonomic lineage string using a genbank accession. Each genbank
-    accession is mapped to a nuccore id, which is then used to get the taxonomy
-    information. Each function call is a HTTP request to the NCBI API.
-
-    This function calls sleep(0.5) twice to space out eutils requests. The API-key free rate limit
-    is 3 hits/second
-
+def get_ncbi_taxid_from_genbank(genbank_accession:str)->int:
+    """Gets the NCBI taxid from a genbank accession. Each genbank accession is
+    checked in the nucleotide and genome databases (priority is given to nucleotide).
+    
     Args:
         genbank_accession (str): The genbank accession number
-
+        
     Returns:
-        str: The taxonomic lineage string
-    """    
-    # Updating the URL
-    mapping_url = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/elink.fcgi?dbfrom=nucleotide&db=nucleotide&id={}&rettype=gb&retmode=xml".format(genbank_accession)
+        int: The NCBI taxid. Empty string if not found.
+    """
 
-    r = requests.get(mapping_url, timeout=10)
+    genbank_accession = str(genbank_accession)
+
+    # First check the nucleotide database
+    nucleotide_url = f"https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=nucleotide&term={genbank_accession}&retmode=json"
+    r = requests.get(nucleotide_url, timeout=10)
+    nucleotide_json = r.json()
     sleep(0.5)
+    # print("nucleotide_json", nucleotide_json, flush=True)
 
-    result_dictionary = xmltodict.parse(r.text)
+    nucleotide_taxid = ""
+    if "esearchresult" in nucleotide_json:
+        if "idlist" in nucleotide_json["esearchresult"]:
+            if len(nucleotide_json["esearchresult"]["idlist"]) > 0:
+                nucleotide_id = nucleotide_json["esearchresult"]["idlist"][0]
+                nucleotide_summary_url = f"https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esummary.fcgi?db=nucleotide&id={nucleotide_id}&retmode=json"
+                r = requests.get(nucleotide_summary_url, timeout=10)
+                nucleotide_summary_json = r.json()
+                sleep(0.5)
 
-    try:
-        nuccore_id = result_dictionary["eLinkResult"]["LinkSet"][0]["IdList"]["Id"]
-    except:
-        nuccore_id = result_dictionary["eLinkResult"]["LinkSet"]["IdList"]["Id"]
+                if "result" in nucleotide_summary_json:
+                    if nucleotide_id in nucleotide_summary_json["result"]:
+                        if "taxid" in nucleotide_summary_json["result"][nucleotide_id]:
+                            nucleotide_taxid = nucleotide_summary_json["result"][nucleotide_id]["taxid"]
 
-    # here we will use an API to get the information
-    xml_url = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=nuccore&id={}&retmode=xml".format(nuccore_id)
+    # If not found in nucleotide, check the assembly database
+    if nucleotide_taxid == "":
+        assembly_url = f"https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=assembly&term={genbank_accession}&retmode=json"
+        r = requests.get(assembly_url, timeout=10)
+        assembly_json = r.json()
+        sleep(0.5)
 
-    r = requests.get(xml_url, timeout=10)
-    sleep(0.5)
-    result_dictionary = xmltodict.parse(r.text)
+        if "esearchresult" in assembly_json:
+            if "idlist" in assembly_json["esearchresult"]:
+                if len(assembly_json["esearchresult"]["idlist"]) > 0:
+                    assembly_id = assembly_json["esearchresult"]["idlist"][0]
+                    assembly_summary_url = f"https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esummary.fcgi?db=assembly&id={assembly_id}&retmode=json"
+                    r = requests.get(assembly_summary_url, timeout=10)
+                    assembly_summary_json = r.json()
+                    sleep(0.5)
 
-    # Getting taxonomy
-    taxonomy = result_dictionary["GBSet"]["GBSeq"]["GBSeq_taxonomy"]
-    organism = result_dictionary["GBSet"]["GBSeq"]["GBSeq_organism"]
+                    if "result" in assembly_summary_json:
+                        if assembly_id in assembly_summary_json["result"]:
+                            if "taxid" in assembly_summary_json["result"][assembly_id]:
+                                nucleotide_taxid = assembly_summary_json["result"][assembly_id]["taxid"]
 
-    sourced_taxid = ""
-    # Find <GBQualifier_value>taxon:156453</GBQualifier_value> in text (not going to parse that)
-    try:
-        sourced_taxid = r.text.split("<GBQualifier_value>taxon:")[1].split("</GBQualifier_value>")[0]
-    except:
-        pass
+    return nucleotide_taxid
 
-    return taxonomy + "; " + organism, sourced_taxid
+# def get_taxonomy_lineage_genbank(genbank_accession):
+#     """Gets the taxonomic lineage string using a genbank accession. Each genbank
+#     accession is mapped to a nuccore id, which is then used to get the taxonomy
+#     information. Each function call is a HTTP request to the NCBI API.
+
+#     This function calls sleep(0.5) twice to space out eutils requests. The API-key free rate limit
+#     is 3 hits/second
+
+#     Args:
+#         genbank_accession (str): The genbank accession number
+
+#     Returns:
+#         str: The taxonomic lineage string
+#     """    
+#     # Updating the URL
+#     mapping_url = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/elink.fcgi?dbfrom=nucleotide&db=nucleotide&id={}&rettype=gb&retmode=xml".format(genbank_accession)
+
+#     r = requests.get(mapping_url, timeout=10)
+#     sleep(0.5)
+
+#     result_dictionary = xmltodict.parse(r.text)
+
+#     try:
+#         nuccore_id = result_dictionary["eLinkResult"]["LinkSet"][0]["IdList"]["Id"]
+#     except:
+#         nuccore_id = result_dictionary["eLinkResult"]["LinkSet"]["IdList"]["Id"]
+
+#     # here we will use an API to get the information
+#     xml_url = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=nuccore&id={}&retmode=xml".format(nuccore_id)
+
+#     r = requests.get(xml_url, timeout=10)
+#     sleep(0.5)
+#     result_dictionary = xmltodict.parse(r.text)
+
+#     # Getting taxonomy
+#     taxonomy = result_dictionary["GBSet"]["GBSeq"]["GBSeq_taxonomy"]
+#     organism = result_dictionary["GBSet"]["GBSeq"]["GBSeq_organism"]
+
+#     sourced_taxid = ""
+#     # Find <GBQualifier_value>taxon:156453</GBQualifier_value> in text (not going to parse that)
+#     try:
+#         sourced_taxid = r.text.split("<GBQualifier_value>taxon:")[1].split("</GBQualifier_value>")[0]
+#     except:
+#         pass
+
+#     return taxonomy + "; " + organism, sourced_taxid
 
 
-def get_taxonomy_lineage_ncbi(taxid, ncbi_taxa):
-    """Gets the taxonomic lineage string using a taxid. Each taxid is used to get
-    the full lineage of the organism. The lineage is then translated to get the
-    scientific names of each taxid. The lineage is then joined with semicolons.
-    This function uses the cached ncbi taxonomy database.
+# def get_taxonomy_lineage_ncbi(taxid, ncbi_taxa):
+#     """Gets the taxonomic lineage string using a taxid. Each taxid is used to get
+#     the full lineage of the organism. The lineage is then translated to get the
+#     scientific names of each taxid. The lineage is then joined with semicolons.
+#     This function uses the cached ncbi taxonomy database.
 
+#     Args:
+#         taxid (str): The taxid of the organism
+#         ncbi_taxa (NCBITaxa): The ncbi taxonomy database
+
+#     Returns:
+#         str: The taxonomic lineage string
+#     """
+#     # Get the full lineage of the taxid
+#     lineage = ncbi_taxa.get_lineage(taxid)
+#     # Translate the lineage to get scientific names
+#     names = ncbi_taxa.get_taxid_translator(lineage)
+#     # Get ranks for each taxid in the lineage
+#     ranks = ncbi_taxa.get_rank(lineage)
+#     # Define the primary seven taxonomic levels
+#     main_ranks = ["kingdom", "phylum", "class", "order", "family", "genus", "species"]
+#     # Extract the taxonomic levels of interest
+#     lineage_str = []
+#     for rank in main_ranks:
+#         # Find the taxid corresponding to the current rank
+#         taxid_at_rank = next((tid for tid, r in ranks.items() if r == rank), None)
+#         if taxid_at_rank:
+#             lineage_str.append(names[taxid_at_rank])
+#         else:
+#             lineage_str.append("")
+#     # Join the lineage components with semicolons
+#     return ";".join(lineage_str)
+
+def get_taxonomy_dict_from_ncbi(taxid:int, ncbi_taxa:NCBITaxa):
+    """Gets the taxonomic linear as a dictionary using a taxid. 
+    
     Args:
         taxid (str): The taxid of the organism
         ncbi_taxa (NCBITaxa): The ncbi taxonomy database
-
+        
     Returns:
-        str: The taxonomic lineage string
+        dict: The taxonomic lineage dictionary
     """
-    # Get the full lineage of the taxid
-    lineage = ncbi_taxa.get_lineage(taxid)
-    # Translate the lineage to get scientific names
-    names = ncbi_taxa.get_taxid_translator(lineage)
-    # Get ranks for each taxid in the lineage
-    ranks = ncbi_taxa.get_rank(lineage)
-    # Define the primary seven taxonomic levels
-    main_ranks = ["kingdom", "phylum", "class", "order", "family", "genus", "species"]
-    # Extract the taxonomic levels of interest
-    lineage_str = []
-    for rank in main_ranks:
-        # Find the taxid corresponding to the current rank
-        taxid_at_rank = next((tid for tid, r in ranks.items() if r == rank), None)
-        if taxid_at_rank:
-            lineage_str.append(names[taxid_at_rank])
-        else:
-            lineage_str.append("")
-    # Join the lineage components with semicolons
-    return ";".join(lineage_str)
+    taxid = int(taxid)
+    if not isinstance(ncbi_taxa, NCBITaxa):
+        raise ValueError("ncbi_taxa must be an instance of NCBITaxa")
+    
+    lineage_as_int = ncbi_taxa.get_lineage(taxid)
+    # print("Lineage as int", lineage_as_int, flush=True)
+    names = ncbi_taxa.get_taxid_translator(lineage_as_int)
+    ranks = ncbi_taxa.get_rank(lineage_as_int)
+    common_keys = list(set(names.keys()).intersection(set(ranks.keys())))
+
+    lineage_dict = {}
+    for key in common_keys:
+        if ranks[key] != 'no rank':
+            lineage_dict[ranks[key]] = names[key]
+
+    return lineage_dict
+
+# def deprecated_get_taxonomy(spectra_entry, ncbi_taxa):
+#     """Gets the taxonomic lineage string for a spectra entry. First uses the genbank
+#     accession to get the lineage. If the genbank accession is not available, the
+#     NCBI taxid is used as a fallback. If both are unavailable, an empty string is
+
+#     Args:
+#         spectra_entry (dict): The spectra database entry.
+#         ncbi_taxa (NCBITaxa): The ncbi taxonomy database
+
+#     Returns:
+#         str: The taxonomic lineage string. Empty string if there is an error.
+#     """
+#     genbank_accession = spectra_entry.get("Genbank accession", "")
+
+#     ncbi_taxid = spectra_entry.get("NCBI taxid", "")
+
+#     taxonomy = ""
+#     sourced_ncbi_taxid = ""
+#     if genbank_accession != "":
+#         # Prioritize genbank accession
+#         try:
+#             taxonomy, sourced_ncbi_taxid = get_taxonomy_lineage_genbank(genbank_accession)
+#         except Exception as e:
+#             print("Exception while getting taxonomy for Genbank accession", genbank_accession, flush=True)
+#             print(e, flush=True)
+
+#         if taxonomy != "":
+#             return taxonomy, sourced_ncbi_taxid
+
+#     if ncbi_taxid != "":
+#         # Use the NCBI taxid as a fallback
+#         try:
+#             ncbi_taxid = int(ncbi_taxid)
+#             taxonomy = get_taxonomy_lineage_ncbi(ncbi_taxid, ncbi_taxa)
+#         except Exception as e:
+#             print("Exception while getting taxonomy for NCBI taxid", ncbi_taxid, flush=True)
+#             print(e, flush=True)
+
+#         if taxonomy != "":
+#             return taxonomy, ncbi_taxid
+        
+#     # Final fallback to 16S Taxonomy
+#     if "16S Taxonomy" in spectra_entry:
+#         if spectra_entry["16S Taxonomy"] is not None and spectra_entry["16S Taxonomy"] != "":
+#             taxonomy = spectra_entry["16S Taxonomy"].strip() + " (User Submitted 16S)"
+
+#     return taxonomy, ""
 
 def get_taxonomy(spectra_entry, ncbi_taxa):
     """Gets the taxonomic lineage string for a spectra entry. First uses the genbank
@@ -101,41 +234,35 @@ def get_taxonomy(spectra_entry, ncbi_taxa):
     Returns:
         str: The taxonomic lineage string. Empty string if there is an error.
     """
+    taxonomy_dict = {}
     genbank_accession = spectra_entry.get("Genbank accession", "")
 
     ncbi_taxid = spectra_entry.get("NCBI taxid", "")
 
-    taxonomy = ""
-    sourced_ncbi_taxid = ""
-    if genbank_accession != "":
-        # Prioritize genbank accession
-        try:
-            taxonomy, sourced_ncbi_taxid = get_taxonomy_lineage_genbank(genbank_accession)
-        except Exception as e:
-            print("Exception while getting taxonomy for Genbank accession", genbank_accession, flush=True)
-            print(e, flush=True)
+    if genbank_accession != "" and genbank_accession != "None" and not pd.isna(genbank_accession):
+        # Prefer genbank over NCBI taxid
+        ncbi_taxid = get_ncbi_taxid_from_genbank(genbank_accession)
 
-        if taxonomy != "":
-            return taxonomy, sourced_ncbi_taxid
-
-    if ncbi_taxid != "":
-        # Use the NCBI taxid as a fallback
+    if ncbi_taxid != "" and ncbi_taxid != "None" and not pd.isna(ncbi_taxid):
+        # Use the given NCBI taxid as a fallback
         try:
             ncbi_taxid = int(ncbi_taxid)
-            taxonomy = get_taxonomy_lineage_ncbi(ncbi_taxid, ncbi_taxa)
+            taxonomy_dict = get_taxonomy_dict_from_ncbi(ncbi_taxid, ncbi_taxa)
+
         except Exception as e:
             print("Exception while getting taxonomy for NCBI taxid", ncbi_taxid, flush=True)
             print(e, flush=True)
 
-        if taxonomy != "":
-            return taxonomy, ncbi_taxid
+        if taxonomy_dict != {}:
+            return taxonomy_dict, ncbi_taxid
         
-    # Final fallback to 16S Taxonomy
-    if "16S Taxonomy" in spectra_entry:
-        if spectra_entry["16S Taxonomy"] is not None and spectra_entry["16S Taxonomy"] != "":
-            taxonomy = spectra_entry["16S Taxonomy"].strip() + " (User Submitted 16S)"
+    # Final fallback to User-Specified 16S Taxonomy
+    # if "16S Taxonomy" in spectra_entry:
+    #     if spectra_entry["16S Taxonomy"] is not None and spectra_entry["16S Taxonomy"] != "":
+    #         raise NotImplementedError("16S Taxonomy is not supported at this time")
+    #         taxonomy = spectra_entry["16S Taxonomy"].strip() + " (User Submitted 16S)"
 
-    return taxonomy, ""
+    return taxonomy_dict, ""
         
 def populate_taxonomies(spectra_list):
     """Populates the FullTaxonomy field in each spectra entry in the spectra list.
@@ -148,20 +275,35 @@ def populate_taxonomies(spectra_list):
     Returns:
         list: The list of spectra entries with the FullTaxonomy field populated.
     """
-    ncbi_taxa = NCBITaxa()                  # Initialize a database of NCBITaxa (Downloads all files over HTTP)
-    ncbi_taxa.update_taxonomy_database()    # Check for updates (no-op if the files are up-to-date)
+    ncbi_taxa = NCBITaxa(dbfile="/app/database/ete3_ncbi_taxa.sqlite", update=True)   # Initialize a database of NCBITaxa (Downloads all files over HTTP)
 
     for spectra_entry in spectra_list:
+        ncbi_tax_id=""
+        taxonomy_dict={}
         try:
-            taxonomy_string, ncbi_tax_id = get_taxonomy(spectra_entry, ncbi_taxa)
+            taxonomy_dict, ncbi_tax_id = get_taxonomy(spectra_entry, ncbi_taxa)
+            # print("Taxonomy dict", taxonomy_dict, flush=True)
+            # print("NCBI Taxid", ncbi_tax_id, flush=True)
             sleep(0.2)
 
-            spectra_entry["FullTaxonomy"] = taxonomy_string
+            # Check if any of the keys conflict, if so remove it and log it
+            for key in taxonomy_dict:
+                if key in spectra_entry:
+                    # print(f"Key {key} already exists in spectra entry. Removing it.", flush=True)
+                    del spectra_entry[key]
+            
+            # print(taxonomy_dict, flush=True)
+            
+            # Add the taxonomy to the spectra entry
+            spectra_entry.update(taxonomy_dict)
+
             if spectra_entry['NCBI taxid'] == "" or pd.isna(spectra_entry['NCBI taxid']):
                 if ncbi_tax_id != "":
                     spectra_entry['NCBI taxid'] = ncbi_tax_id
-        except:
-            pass
+        except Exception as e:
+            print("Exception while populating taxonomies", flush=True)
+            print(e, flush=True)
+            continue
 
     return spectra_list
 
@@ -186,7 +328,7 @@ def generate_tree(taxid_list):
     png_path = "/app/assets/tree.png"
 
     # Initialize NCBI Taxa database
-    ncbi = NCBITaxa()
+    ncbi = NCBITaxa(dbfile="/app/database/ete3_ncbi_taxa.sqlite")
 
     # Fetch the tree topology based on these taxids
     tree = ncbi.get_topology(taxid_list)

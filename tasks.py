@@ -72,6 +72,10 @@ def task_summarize_depositions():
     # Get the taxonomies from genbank, falling back to NCBI taxid
     spectra_list = populate_taxonomies(spectra_list)
 
+    # Save the spectra list to a file # DEBUG
+    with open("database/summary.json", "w") as f:
+        f.write(json.dumps(spectra_list))
+
     # Summarizing the spectra
     df = pd.DataFrame(spectra_list)
 

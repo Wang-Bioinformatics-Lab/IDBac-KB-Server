@@ -57,26 +57,24 @@ _env = dotenv_values()
 
 server = app.server
 
-summary_df = None
-number_of_database_entries = ""
-if os.path.exists("database/summary.tsv"):
-    summary_df = pd.read_csv("database/summary.tsv", sep="\t")
-    number_of_database_entries = str(len(summary_df))
-    summary_df["FullTaxonomy"] = summary_df["FullTaxonomy"].fillna("No Taxonomy")
-    not_16S = ~ summary_df["FullTaxonomy"].str.contains("User Submitted 16S") & ~ summary_df["FullTaxonomy"].str.contains("No Taxonomy")
-    is_16S  = summary_df["FullTaxonomy"].str.contains("User Submitted 16S")
+# summary_df = None
+# number_of_database_entries = ""
+# if os.path.exists("database/summary.tsv"):
+#     summary_df = pd.read_csv("database/summary.tsv", sep="\t")
+#     number_of_database_entries = str(len(summary_df))
 
-    summary_df.assign(Genus="", Species="")
-    summary_df.loc[not_16S, "Genus"] = summary_df.loc[not_16S, "FullTaxonomy"].str.split(";").str[-2]
-    summary_df.loc[not_16S, "Species"] = summary_df.loc[not_16S, "FullTaxonomy"].str.split(";").str[-1]
-    summary_df.loc[is_16S, "Genus"] = summary_df.loc[is_16S, "FullTaxonomy"].str.split().str[0]
-    summary_df.loc[is_16S, "Species"] = "User Submitted 16S"
+#     summary_df["FullTaxonomy"] = summary_df["FullTaxonomy"].fillna("No Taxonomy")
+#     not_16S = ~ summary_df["FullTaxonomy"].str.contains("User Submitted 16S") & ~ summary_df["FullTaxonomy"].str.contains("No Taxonomy")
+#     is_16S  = summary_df["FullTaxonomy"].str.contains("User Submitted 16S")
 
-    # Get counts by Genus and Species for px.bar
-    # summary_df = summary_df.groupby(["Genus", "Species"]).size().reset_index(name="count")
-    summary_df = summary_df.groupby(["Genus"]).size().reset_index(name="count")
-    # Strip the Genus column of whitespace
-    summary_df["Genus"] = summary_df["Genus"].str.strip()
+#     summary_df.loc[is_16S & (summary_df.genus.isna()), "Genus"] = summary_df.loc[is_16S, "FullTaxonomy"].str.split().str[0]
+#     summary_df.loc[is_16S & (summary_df.species.isna()), "Species"] = "User Submitted 16S"
+
+#     # Get counts by Genus and Species for px.bar
+#     # summary_df = summary_df.groupby(["Genus", "Species"]).size().reset_index(name="count")
+#     summary_df = summary_df.groupby(["Genus"]).size().reset_index(name="count")
+#     # Strip the Genus column of whitespace
+#     summary_df["Genus"] = summary_df["Genus"].str.strip()
 
 # setting tracking token
 app.index_string = """<!DOCTYPE html>
@@ -159,14 +157,11 @@ def last_updated(search):
 def display_table(search):
     summary_df = pd.read_csv("database/summary.tsv", sep="\t")
     # Remove columns shown in "Additional Data"
-    hidden_columns = set(["FullTaxonomy", "task", "Scan/Coordinate", 
-                      "Filename", "Comment", "16S Sequence", "16S Taxonomy", "database_id", 
-                      "user", "Latitude", "Longitude", "Altitude",
-                      "Sample Collected by", "Isolate Collected by",
-                      "MS Collected by", "Cultivation temp", "Cultivation time",
-                      "NCBI taxid", "Strain ID"])
+    shown_columns = set(["Strain name", "Strain ID", "Culture Collection", 
+                      "MALDI matrix name", "PI", "Isolate Source", "Source Location Name"])
     # Make safe if columns are missing
-    hidden_columns = list(hidden_columns.intersection(summary_df.columns))
+    shown_columns = list(set(summary_df.columns) & shown_columns)
+    hidden_columns = list(set(summary_df.columns) - set(shown_columns))
 
     columns = [{"name": i, "id": i, "hideable": True} for i in summary_df.columns]
 
@@ -248,7 +243,22 @@ def update_additional_data(table_data, table_selected):
     data = selected_row.to_dict('records')[0]
 
     # Getting the taxonomies
-    taxonomies = data.get("FullTaxonomy")
+    ordered_taxonomy_keys = [
+                                'superkingdom',
+                                'kingdom',
+                                'phylum',
+                                'class',
+                                'order',
+                                'family',
+                                'genus',
+                                'species group',
+                                'species subgroup',
+                                'species',
+                                'subspecies',
+                                'strain',
+                                'clade'
+                            ]
+    taxonomies = [data.get(key, "") for key in ordered_taxonomy_keys]
     databse_id = data.get("database_id")
     task       = data.get("task")
     sequence   = data.get("16S Sequence")
@@ -256,8 +266,9 @@ def update_additional_data(table_data, table_selected):
     comment    = data.get("Comment")
 
     # If any of the above are None or '', replace with "No Data"
-    if taxonomies is None or taxonomies == "":
-        taxonomies = "No Data"
+    for i in range(len(taxonomies)):
+        if taxonomies[i] is None or taxonomies[i] == "" or str(taxonomies[i]).lower() == "nan":
+            taxonomies[i] = "No Data"
     if databse_id is None or databse_id == "":
         databse_id = "No Data"
     if task is None or task == "":
@@ -269,19 +280,22 @@ def update_additional_data(table_data, table_selected):
     if comment is None or comment == "":
         comment = "No Data"
 
-    # Output the data
-    return [html.H5("Database ID:"),
+    main_output = [html.H5("Database ID:"),
             html.P(databse_id),
             html.H5("Filename:"),
             html.P(filename),
             html.H5("Task:"),
             html.P(task),
             html.H5("Comment:"),
-            html.P(comment),
-            html.H5("Taxonomy:"),
-            html.P(taxonomies),
-            html.H5("16S Sequence:"),
-            html.P(sequence)]
+            html.P(comment),]
+
+    taxonomies_output = [html.H5("Taxonomy")] + [html.P(f"{str(key).capitalize()}: {val}") for key,val in zip(ordered_taxonomy_keys, taxonomies)]
+    
+    # Add Together
+    final_output = main_output + taxonomies_output + [html.H5("16S Sequence:"), html.P(sequence)]
+
+    # Output the data
+    return final_output
 
 # API
 @server.route("/api")
