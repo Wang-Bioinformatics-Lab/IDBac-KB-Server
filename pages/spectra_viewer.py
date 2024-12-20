@@ -170,7 +170,7 @@ def update_spectra_display(active_page, data_table):
                         line=dict(color="blue"),
                     ),
                 ).update_layout(
-                    title=f"Spectrum {start_index + idx + 1}",
+                    title=f"DB-ID: {ids_to_display[idx]}",
                     height=300,
                     margin=dict(l=10, r=10, t=30, b=10),
                 ),
