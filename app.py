@@ -34,6 +34,11 @@ from flask import request
 
 import tasks
 
+
+dev_mode = False
+if not os.path.isdir('/app'):
+    dev_mode =  True
+
 server = Flask(__name__)
 
 app = dash.Dash(
@@ -147,15 +152,28 @@ def last_updated(search):
     else:
         return [""]
 
+# TODO: CACHE ME
+@app.callback(    
+            Output('data-store', 'data'),  # Update the data in the store
+            Input('url', 'search'))
+def load_database(search):
+    summary_df = pd.read_csv("database/summary.tsv", sep="\t")
+    
+    # Prepare columns and data for DataTable if needed, or return directly for storage
+    data = summary_df.to_dict('records')  # Data as a list of records
+
+    return data  # This populates the data in the Store
 
 @app.callback([
                 Output('displaytable', 'data'),
                 Output('displaytable', 'columns'),
-                Output('displaytable', 'hidden_columns')
+                Output('displaytable', 'hidden_columns'),
               ],
-              [Input('url', 'search')])
-def display_table(search):
-    summary_df = pd.read_csv("database/summary.tsv", sep="\t")
+              [ Input('data-store', 'data'),
+                Input('url', 'search'),
+            ])
+def display_table(sumary_df, search):
+    summary_df = pd.DataFrame(sumary_df)
     # Remove columns shown in "Additional Data"
     shown_columns = set(["Strain name", "Strain ID", "Culture Collection", 
                       "MALDI matrix name", "PI", "Isolate Source", "Source Location Name"])
@@ -333,7 +351,10 @@ def deposit():
 
 @server.route("/api/db-checksum", methods=["GET"])
 def checksum():
-    return send_from_directory("/app/workflows/idbac_summarize_database/nf_output/", "idbac_database.json.sha256")
+    if dev_mode:
+        return send_from_directory("workflows/idbac_summarize_database/nf_output/", "idbac_database.json.sha256")
+    else:
+        return send_from_directory("/app/workflows/idbac_summarize_database/nf_output/", "idbac_database.json.sha256")
 
 @server.route("/api/spectrum", methods=["GET"])
 def download():
@@ -341,7 +362,10 @@ def download():
     database_id = request.values.get("database_id")
 
     if database_id == "ALL":
-        return send_from_directory("/app/workflows/idbac_summarize_database/nf_output/", "idbac_database.json")
+        if dev_mode:
+            return send_from_directory("workflows/idbac_summarize_database/nf_output/", "output_merged_spectra.json")
+        else:
+            return send_from_directory("/app/workflows/idbac_summarize_database/nf_output/", "idbac_database.json")
 
     # Finding all the database files
     database_files = glob.glob("database/depositions/**/{}.json".format(os.path.basename(database_id)))
@@ -360,7 +384,10 @@ def filtered_spectra():
     database_id = request.values.get("database_id")
 
     if database_id == "ALL":
-        return send_from_directory("/app/workflows/idbac_summarize_database/nf_output/", "output_merged_spectra.json")
+        if dev_mode:
+            return send_from_directory("workflows/idbac_summarize_database/nf_output/", "output_merged_spectra.json")
+        else:
+            return send_from_directory("/app/workflows/idbac_summarize_database/nf_output/", "output_merged_spectra.json")
 
     # Finding all the database files
     database_files = glob.glob("/app/workflows/idbac_summarize_database/nf_output/output_spectra_json/**/{}.json".format(os.path.basename(database_id)))
@@ -383,33 +410,65 @@ def spectra_list():
 
 @server.route("/admin/nextflow_report", methods=["GET"])
 def nextflow_report():
-    if os.path.exists("/app/workflows/idbac_summarize_database/IDBac_summarize_database_report.html"):
-        return send_from_directory("/app/workflows/idbac_summarize_database", "IDBac_summarize_database_report.html")
+    if dev_mode:
+        if os.path.exists("workflows/idbac_summarize_database/IDBac_summarize_database_report.html"):
+            return send_from_directory("workflows/idbac_summarize_database", "IDBac_summarize_database_report.html")
+        else:
+            return "No Report Found", 404
     else:
-        return "No Report Found", 404
+        if os.path.exists("/app/workflows/idbac_summarize_database/IDBac_summarize_database_report.html"):
+            return send_from_directory("/app/workflows/idbac_summarize_database", "IDBac_summarize_database_report.html")
+        else:
+            return "No Report Found", 404
     
 @server.route("/download_tree_png", methods=["GET"])
 def download_tree_png():
-    if os.path.exists("/app/assets/tree.png"):
-        return send_from_directory("/app/assets", "tree.png")
+    if dev_mode:
+        if os.path.exists("workflows/idbac_summarize_database/nf_output/tree.png"):
+            return send_from_directory("workflows/idbac_summarize_database/nf_output", "tree.png")
+        else:
+            return "No Image Found", 404
     else:
-        return "No Image Found", 404
+        if os.path.exists("/app/assets/tree.png"):
+            return send_from_directory("/app/assets", "tree.png")
+        else:
+            return "No Image Found", 404
 
 @server.route("/download_tree_svg", methods=["GET"])
 def download_tree_svg():
-    if os.path.exists("/app/assets/tree.svg"):
-        return send_from_directory("/app/assets", "tree.svg")
+    if dev_mode:
+        if os.path.exists("workflows/idbac_summarize_database/nf_output/tree.svg"):
+            return send_from_directory("workflows/idbac_summarize_database/nf_output", "tree.svg")
+        else:
+            return "No Image Found", 404
     else:
-        return "No Image Found", 404
+        if os.path.exists("/app/assets/tree.svg"):
+            return send_from_directory("/app/assets", "tree.svg")
+        else:
+            return "No Image Found", 404
     
 @server.route("/download_tree_nwk", methods=["GET"])
 def download_tree_nwk():
-    if os.path.exists("/app/assets/tree.nwk"):
-        return send_from_directory("/app/assets", "tree.nwk")
+    if dev_mode:
+        if os.path.exists("workflows/idbac_summarize_database/nf_output/tree.nwk"):
+            return send_from_directory("workflows/idbac_summarize_database/nf_output", "tree.nwk")
+        else:
+            return "No Image Found", 404
     else:
-        return "No Image Found", 404
+        if os.path.exists("/app/assets/tree.nwk"):
+            return send_from_directory("/app/assets", "tree.nwk")
+        else:
+            return "No Image Found", 404
 
-def _get_processed_spectrum(database_id):
+def _get_processed_spectrum(database_id:str)->dict:
+    """ Returns the processed spectrum for a given database id.
+
+    Args:
+        database_id (str): The database id to search for.
+
+    Returns:
+        dict: The processed spectrum.
+    """
     # Finding all the database files
     database_files = glob.glob("/app/workflows/idbac_summarize_database/nf_output/output_spectra_json/**/{}.json".format(os.path.basename(database_id)))
 

@@ -291,4 +291,7 @@ def update_dynamic_pie_chart(selected_taxonomy):
     return fig
 
 def layout(**kwargs):
-    return html.Div(children=[BODY])
+    return html.Div(children=[
+        dcc.Store(id='data-store', storage_type='memory',),
+        BODY, 
+        ])

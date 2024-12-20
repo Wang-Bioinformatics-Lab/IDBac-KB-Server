@@ -11,6 +11,10 @@ import xmltodict
 from utils import populate_taxonomies, generate_tree
 from utils import calculate_checksum
 
+dev_mode = False
+if not os.path.isdir('/app'):
+    dev_mode =  True
+
 celery_instance = Celery('tasks', backend='redis://idbac-kb-redis', broker='pyamqp://guest@idbac-kb-rabbitmq//', )
 
 @celery_instance.task(time_limit=60)
@@ -89,9 +93,14 @@ def task_summarize_depositions():
     task_summarize_nextflow.delay()
 
     # Calculate checksum for the database
-    checksum = calculate_checksum("/app/workflows/idbac_summarize_database/nf_output/idbac_database.json")
-    with open("/app/workflows/idbac_summarize_database/nf_output/idbac_database.json.sha256", "w") as f:
-        f.write(checksum)
+    if dev_mode:
+        checksum = calculate_checksum("database/summary.json")
+        with open("database/summary.json.sha256", "w") as f:
+            f.write(checksum)
+    else:
+        checksum = calculate_checksum("/app/workflows/idbac_summarize_database/nf_output/idbac_database.json")
+        with open("/app/workflows/idbac_summarize_database/nf_output/idbac_database.json.sha256", "w") as f:
+            f.write(checksum)
 
     return "Done"
 
@@ -100,17 +109,25 @@ def task_summarize_depositions():
 def task_summarize_nextflow():
     # Trying to cleanup the work folder
     try:
-        os.system("rm -rf /app/workflows/idbac_summarize_database/work")
+        if not dev_mode:
+            os.system("rm -rf /app/workflows/idbac_summarize_database/work")
     except:
         pass
 
     # Now we'll call the NextFlow Script
 
-    cmd = "cd /app/workflows/idbac_summarize_database/ && \
-    nextflow run /app/workflows/idbac_summarize_database/nf_workflow.nf \
-    --input_database /app/database/depositions \
-    -profile docker \
-    -c /app/workflows/idbac_summarize_database/nextflow.config"
+    if dev_mode:
+        cmd = "cd /workflows/idbac_summarize_database/ && \
+        nextflow run /workflows/idbac_summarize_database/nf_workflow.nf \
+        --input_database /database/summary.json \
+        -profile docker \
+        -c workflows/idbac_summarize_database/nextflow.config"
+    else:
+        cmd = "cd /app/workflows/idbac_summarize_database/ && \
+        nextflow run /app/workflows/idbac_summarize_database/nf_workflow.nf \
+        --input_database /app/database/depositions \
+        -profile docker \
+        -c /app/workflows/idbac_summarize_database/nextflow.config"
 
     print(cmd)
 

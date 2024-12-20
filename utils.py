@@ -8,6 +8,10 @@ from time import sleep
 import hashlib
 import os
 
+dev_mode = False
+if not os.path.isdir('/app'):
+    dev_mode =  True
+
 def get_ncbi_taxid_from_genbank(genbank_accession:str)->int:
     """Gets the NCBI taxid from a genbank accession. Each genbank accession is
     checked in the nucleotide and genome databases (priority is given to nucleotide).
@@ -275,7 +279,10 @@ def populate_taxonomies(spectra_list):
     Returns:
         list: The list of spectra entries with the FullTaxonomy field populated.
     """
-    ncbi_taxa = NCBITaxa(dbfile="/app/database/ete3_ncbi_taxa.sqlite", update=True)   # Initialize a database of NCBITaxa (Downloads all files over HTTP)
+    if dev_mode:
+        ncbi_taxa = NCBITaxa(dbfile="database/ete3_ncbi_taxa.sqlite", update=True)   # Initialize a database of NCBITaxa (Downloads all files over HTTP)
+    else:
+        ncbi_taxa = NCBITaxa(dbfile="/app/database/ete3_ncbi_taxa.sqlite", update=True)   # Initialize a database of NCBITaxa (Downloads all files over HTTP)
 
     for spectra_entry in spectra_list:
         ncbi_tax_id=""
@@ -324,11 +331,18 @@ def generate_tree(taxid_list):
             pass
     taxid_list = _taxid_list     
 
-    svg_path = "/app/assets/tree.svg"
-    png_path = "/app/assets/tree.png"
+    if dev_mode:
+        svg_path = "assets/tree.svg"
+        png_path = "assets/tree.png"
+    else:
+        svg_path = "/app/assets/tree.svg"
+        png_path = "/app/assets/tree.png"
 
     # Initialize NCBI Taxa database
-    ncbi = NCBITaxa(dbfile="/app/database/ete3_ncbi_taxa.sqlite")
+    if dev_mode:
+        ncbi = NCBITaxa(dbfile="database/ete3_ncbi_taxa.sqlite")
+    else:
+        ncbi = NCBITaxa(dbfile="/app/database/ete3_ncbi_taxa.sqlite")
 
     # Fetch the tree topology based on these taxids
     tree = ncbi.get_topology(taxid_list)
@@ -355,7 +369,10 @@ def generate_tree(taxid_list):
     tree.render(svg_path, w=1200, units="px", tree_style=ts)
     tree.render(png_path, w=1200, units="px", tree_style=ts)
     # Save to newick tree format
-    tree.write(format=0, outfile="/app/assets/tree.nwk")
+    if dev_mode:
+        tree.write(format=0, outfile="assets/tree.nwk")
+    else:
+        tree.write(format=0, outfile="/app/assets/tree.nwk")
 
 def calculate_checksum(file_path, algorithm='sha256', chunk_size=65536):
     """
