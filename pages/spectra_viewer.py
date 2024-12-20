@@ -161,21 +161,32 @@ def update_spectra_display(active_page, data_table):
     # Generate line plots for the current page
     children = [
         html.Div(
-            dcc.Graph(
-                figure=Figure(
-                    data=Scatter(
-                        x=s["x"],
-                        y=s["y"],
-                        mode="lines",
-                        line=dict(color="blue"),
-                    ),
-                ).update_layout(
-                    title=f"DB-ID: {ids_to_display[idx]}",
-                    height=300,
-                    margin=dict(l=10, r=10, t=30, b=10),
+            [
+                html.Div(
+                    f"Database ID: {ids_to_display[idx]}",
+                    style={
+                        "fontSize": "14px",
+                        "fontWeight": "bold",
+                        "textAlign": "center",
+                        "marginBottom": "5px",
+                    },
                 ),
-                config={"displayModeBar": False},
-            ),
+                dcc.Graph(
+                    figure=Figure(
+                        data=Scatter(
+                            x=s["x"],
+                            y=s["y"],
+                            mode="lines",
+                            line=dict(color="blue"),
+                        ),
+                    ).update_layout(
+                        title=None,  # Move the title to a separate Div
+                        height=300,
+                        margin=dict(l=10, r=10, t=10, b=10),
+                    ),
+                    config={"displayModeBar": False},
+                ),
+            ],
             style={
                 "flex": "1 1 calc(33% - 10px)",
                 "min-width": "300px",
