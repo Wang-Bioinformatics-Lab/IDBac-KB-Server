@@ -329,6 +329,12 @@ def refresh():
 
     return "Refreshing"
 
+@server.route("/api/get_all_strain_names", methods=["GET"])
+def get_all_strain_names():
+    summary_df = pd.read_csv("database/summary.tsv", sep="\t")
+
+    return json.dumps(summary_df["Strain name"].tolist())
+
 @server.route("/api/spectrum", methods=["POST"])
 def deposit():
     # Check the API credentials
