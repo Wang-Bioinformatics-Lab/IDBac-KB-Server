@@ -177,6 +177,7 @@ def update_spectra_display(active_page, data_table):
                 html.Div(
                     [
                     f"Database ID: {ids_to_display[idx]}",
+                    html.Br(),
                     download_links[idx],
                     ],
                     style={
