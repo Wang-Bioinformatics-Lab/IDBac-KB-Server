@@ -23,3 +23,4 @@ ete3
 six
 PyQt5
 openpyxl
+psims

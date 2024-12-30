@@ -17,6 +17,7 @@ import pandas as pd
 
 from dash import html, register_page 
 
+from utils import convert_to_mzml
 
 dev_mode = False
 if not os.path.isdir('/app'):
@@ -154,6 +155,17 @@ def update_spectra_display(active_page, data_table):
     ids_to_display = data_table.iloc[start_index:end_index]['database_id'].values
     if ids_to_display is None:
         return [], active_page
+    
+    # Create download links for each database id
+    download_links = [
+        html.A(
+            "Download Raw",
+            href=f"/api/spectrum/mzml?database_id={database_id}",
+            target="_blank",
+            style={"margin": "5px"},
+        )
+        for database_id in ids_to_display
+    ]
 
     spectra_to_display = [_get_processed_spectrum(i) for i in ids_to_display]
     spectra_to_display = [format_spectrum(s) for s in spectra_to_display if s is not None]
@@ -163,7 +175,10 @@ def update_spectra_display(active_page, data_table):
         html.Div(
             [
                 html.Div(
+                    [
                     f"Database ID: {ids_to_display[idx]}",
+                    download_links[idx],
+                    ],
                     style={
                         "fontSize": "14px",
                         "fontWeight": "bold",

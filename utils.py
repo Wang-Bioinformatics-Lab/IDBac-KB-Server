@@ -1,8 +1,12 @@
+from io import BytesIO
 from ete3 import NCBITaxa
 from ete3 import Tree, TreeStyle
 import numpy as np
 import pandas as pd
 import requests
+import json
+from requests_cache import Path
+from psims.mzml.writer import MzMLWriter
 import xmltodict
 from time import sleep
 import hashlib
@@ -373,6 +377,65 @@ def generate_tree(taxid_list):
         tree.write(format=0, outfile="assets/tree.nwk")
     else:
         tree.write(format=0, outfile="/app/assets/tree.nwk")
+
+def convert_to_mzml(json_run:Path):
+    """Converts a json run to an mzML file using psims. Returns in a BytesIO object.
+
+    Args:
+        json_run (Path): The path to the json run file.
+
+    Returns:
+        BytesIO: The mzML file as a BytesIO object.
+    """
+
+    json_run = Path(str(json_run))
+    if not json_run.exists():
+        raise FileNotFoundError(f"File {json_run} not found")
+
+    output_bytes = BytesIO()
+
+    with open(json_run, 'r') as file_handle:
+        run_dict = json.load(file_handle)
+
+        other_keys = set(list(run_dict.keys()))
+        other_keys.remove("spectrum")
+        other_keys = sorted(list(other_keys))
+
+        with MzMLWriter(output_bytes, close=False) as out:
+            out.controlled_vocabularies()
+
+            # Write the metadata as user parameters
+            
+            params = {}
+            params['id'] = 'global_metadata'
+            for key in other_keys:
+                params[f'_{key}'] = run_dict[key] # Prevent resolutions for existing
+
+            out.reference_param_group_list([
+                params
+            ])
+               
+            with out.run(id="admin_qc_download"):
+                with out.spectrum_list(count=len(run_dict["spectrum"])):
+                    scan = 1
+                    for spectrum in run_dict["spectrum"]:
+                        mz_array = [x[0] for x in spectrum]
+                        intensity_array = [x[1] for x in spectrum]
+
+                        out.write_spectrum(
+                            mz_array, intensity_array,
+                            id="scan={}".format(scan),
+                            params=[
+                                "MS1 Spectrum",
+                                {"ms level": 1},
+                                {"total ion current": sum(intensity_array)}
+                            ])
+                        scan += 1
+
+    return output_bytes
+        
+
+
 
 def calculate_checksum(file_path, algorithm='sha256', chunk_size=65536):
     """

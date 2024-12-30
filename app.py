@@ -12,7 +12,7 @@ import plotly.graph_objects as go
 
 import os
 import urllib.parse
-from flask import Flask, send_from_directory, render_template
+from flask import Flask, send_file, send_from_directory, render_template
 
 import pandas as pd
 import requests
@@ -33,6 +33,8 @@ from flask_caching import Cache
 from flask import request
 
 import tasks
+
+from utils import convert_to_mzml
 
 
 dev_mode = False
@@ -377,6 +379,33 @@ def download():
         return "Multiple files found", 500
     
     return send_from_directory(os.path.dirname(database_files[0]), os.path.basename(database_files[0]))
+
+@server.route("/api/spectrum/mzml", methods=["GET"])
+def download_mzml():
+    # Getting a single spectrum
+    database_id = request.values.get("database_id")
+
+    # Finding all the database files
+    database_files = glob.glob("database/depositions/**/{}.json".format(os.path.basename(database_id)))
+
+    if len(database_files) == 0:
+        return "File not found", 404
+    
+    if len(database_files) > 1:
+        return "Multiple files found", 500
+    
+    # Get the file and convert to mzML
+    mzml_bytes  = convert_to_mzml(database_files[0])
+
+    # Return bytes as file
+    mzml_bytes.seek(0)
+    return send_file(
+        mzml_bytes,
+        as_attachment=True,
+        download_name=f"{database_id}.mzML",
+        mimetype="application/octet-stream"
+    )
+
 
 @server.route("/api/spectrum/filtered", methods=["GET"])
 def filtered_spectra():
