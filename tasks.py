@@ -93,15 +93,9 @@ def task_summarize_depositions():
     task_summarize_nextflow.delay()
 
     # Calculate checksum for the database
-    if dev_mode:
-        checksum = calculate_checksum("database/summary.json")
-        with open("database/summary.json.sha256", "w") as f:
-            f.write(checksum)
-    else:
-        checksum = calculate_checksum("/app/workflows/idbac_summarize_database/nf_output/idbac_database.json")
-        with open("/app/workflows/idbac_summarize_database/nf_output/idbac_database.json.sha256", "w") as f:
-            f.write(checksum)
-
+    checksum = calculate_checksum("database/summary.json")
+    with open("database/summary.json.sha256", "w") as f:
+        f.write(checksum)
     return "Done"
 
 
