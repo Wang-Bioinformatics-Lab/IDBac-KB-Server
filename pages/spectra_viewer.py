@@ -87,10 +87,11 @@ def _get_processed_spectrum(database_id:str)->dict:
         dict: The processed spectrum.
     """
     # Finding all the database files
+    bin_width = 10 # Fixed bin width of 10 for now
     if dev_mode:
-        database_files = glob.glob("workflows/idbac_summarize_database/nf_output/output_spectra_json/**/{}.json".format(os.path.basename(database_id)))
+        database_files = glob.glob(f"workflows/idbac_summarize_database/nf_output/output_spectra_json/{str(bin_width)}_da_bin/**/{os.path.basename(database_id)}.json")
     else:
-        database_files = glob.glob("/app/workflows/idbac_summarize_database/nf_output/output_spectra_json/**/{}.json".format(os.path.basename(database_id)))
+        database_files = glob.glob(f"/app/workflows/idbac_summarize_database/nf_output/output_spectra_json/{str(bin_width)}_da_bin/**/{os.path.basename(database_id)}.json")
 
     if len(database_files) == 0:
         return None

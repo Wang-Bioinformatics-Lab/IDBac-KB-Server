@@ -418,15 +418,16 @@ def download_mzml():
 def filtered_spectra():
     # Getting a single spectrum
     database_id = request.values.get("database_id")
+    bin_width   = request.values.get("bin_width", 10)
 
     if database_id == "ALL":
         if dev_mode:
-            return send_from_directory("workflows/idbac_summarize_database/nf_output/", "output_merged_spectra.json")
+            return send_from_directory(f"workflows/idbac_summarize_database/nf_output/{str(bin_width)}_da_bin/", "output_merged_spectra.json")
         else:
-            return send_from_directory("/app/workflows/idbac_summarize_database/nf_output/", "output_merged_spectra.json")
+            return send_from_directory(f"/app/workflows/idbac_summarize_database/nf_output/{str(bin_width)}_da_bin/", "output_merged_spectra.json")
 
     # Finding all the database files
-    database_files = glob.glob("/app/workflows/idbac_summarize_database/nf_output/output_spectra_json/**/{}.json".format(os.path.basename(database_id)))
+    database_files = glob.glob(f"/app/workflows/idbac_summarize_database/nf_output/{str(bin_width)}_da_bin/output_spectra_json/**/{os.path.basename(database_id)}.json")
 
     if len(database_files) == 0:
         return "File not found", 404
