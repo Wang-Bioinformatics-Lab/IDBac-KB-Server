@@ -11,6 +11,8 @@ import plotly.express as px
 from plotly.graph_objs import Scatter, Figure
 import glob
 
+import numpy as np
+from scipy.ndimage import uniform_filter1d
 import os
 
 import pandas as pd
@@ -89,9 +91,9 @@ def _get_processed_spectrum(database_id:str)->dict:
     # Finding all the database files
     bin_width = 10 # Fixed bin width of 10 for now
     if dev_mode:
-        database_files = glob.glob(f"workflows/idbac_summarize_database/nf_output/output_spectra_json/{str(bin_width)}_da_bin/**/{os.path.basename(database_id)}.json")
+        database_files = glob.glob(f"workflows/idbac_summarize_database/nf_output/{str(bin_width)}_da_bin/output_spectra_json/**/{os.path.basename(database_id)}.json")
     else:
-        database_files = glob.glob(f"/app/workflows/idbac_summarize_database/nf_output/output_spectra_json/{str(bin_width)}_da_bin/**/{os.path.basename(database_id)}.json")
+        database_files = glob.glob(f"/app/workflows/idbac_summarize_database/nf_output/{str(bin_width)}_da_bin/output_spectra_json/**/{os.path.basename(database_id)}.json")
 
     if len(database_files) == 0:
         return None
@@ -135,6 +137,34 @@ def format_spectrum(spectrum: dict) -> dict:
 
     return {"x": x, "y": y}
 
+def estimate_convexity(spectrum: dict, window_size: int = 5) -> float:
+    """
+    Estimates the convexity of a spectrum.
+
+    Args:
+        spectrum (dict): The spectrum to estimate the convexity of. 
+                         Keys are "x" (array of x values) and "y" (array of y values).
+        window_size (int): The window size for smoothing the y values.
+
+    Returns:
+        float: The convexity of the spectrum.
+    """
+    x = np.array(spectrum["x"])
+    y = np.array(spectrum["y"])
+    
+    # Smooth the y values using a moving average
+    smoothed_y = uniform_filter1d(y, size=window_size)
+    
+    # Calculate first and second derivatives
+    dx = np.gradient(x)
+    dy = np.gradient(smoothed_y, dx)
+    ddy = np.gradient(dy, dx)
+    
+    # Estimate convexity as the average second derivative
+    convexity = np.mean(ddy)
+    
+    return convexity
+
 @callback(
     Output("spectra-container", "children"),
     Output("pagination", "active_page"),
@@ -170,6 +200,7 @@ def update_spectra_display(active_page, data_table):
 
     spectra_to_display = [_get_processed_spectrum(i) for i in ids_to_display]
     spectra_to_display = [format_spectrum(s) for s in spectra_to_display if s is not None]
+    estimated_convexity = [estimate_convexity(s) for s in spectra_to_display]
 
     # Generate line plots for the current page
     children = [
@@ -177,7 +208,7 @@ def update_spectra_display(active_page, data_table):
             [
                 html.Div(
                     [
-                    f"Database ID: {ids_to_display[idx]}",
+                    f"Database ID: {ids_to_display[idx]}", f"Convexity: {estimated_convexity[idx]:.2f}",
                     html.Br(),
                     download_links[idx],
                     ],
