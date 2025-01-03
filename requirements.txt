@@ -1,14 +1,14 @@
-Flask
+Flask==2.2.5
 gunicorn
-plotly
-pandas
-numpy
+plotly==5.24.1
+pandas==2.2.3
+numpy==2.2.1
 requests
 requests_cache
 tqdm
 Werkzeug==2.2.2
 Flask-Caching
-dash
+dash==2.18.2
 dash-bootstrap-components
 dash-core-components
 dash-html-components
@@ -24,3 +24,4 @@ six
 PyQt5
 openpyxl
 psims
+scipy==1.15.0

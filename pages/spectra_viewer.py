@@ -11,6 +11,8 @@ import plotly.express as px
 from plotly.graph_objs import Scatter, Figure
 import glob
 
+import numpy as np
+from scipy.ndimage import uniform_filter1d
 import os
 
 import pandas as pd
@@ -89,9 +91,9 @@ def _get_processed_spectrum(database_id:str)->dict:
     # Finding all the database files
     bin_width = 10 # Fixed bin width of 10 for now
     if dev_mode:
-        database_files = glob.glob(f"workflows/idbac_summarize_database/nf_output/output_spectra_json/{str(bin_width)}_da_bin/**/{os.path.basename(database_id)}.json")
+        database_files = glob.glob(f"workflows/idbac_summarize_database/nf_output/{str(bin_width)}_da_bin/output_spectra_json/**/{os.path.basename(database_id)}.json")
     else:
-        database_files = glob.glob(f"/app/workflows/idbac_summarize_database/nf_output/output_spectra_json/{str(bin_width)}_da_bin/**/{os.path.basename(database_id)}.json")
+        database_files = glob.glob(f"/app/workflows/idbac_summarize_database/nf_output/{str(bin_width)}_da_bin/output_spectra_json/**/{os.path.basename(database_id)}.json")
 
     if len(database_files) == 0:
         return None
@@ -135,6 +137,37 @@ def format_spectrum(spectrum: dict) -> dict:
 
     return {"x": x, "y": y}
 
+def estimate_convexity(spectrum: dict):
+    """
+    Estimates the convexity of a spectrum by fitting a quadratic polynomial
+    and returning the coefficient of the x^2 term along with the fitted points.
+
+    Args:
+        spectrum (dict): The spectrum to estimate the convexity of.
+                         Keys are "x" (array of x values) and "y" (array of y values).
+
+    Returns:
+        tuple: (float, np.ndarray, np.ndarray)
+               - The coefficient of the x^2 term in the polynomial fit.
+               - The x values of the fit (same as input x values).
+               - The fitted y values corresponding to the input x values.
+    """
+    x = np.array(spectrum["x"])
+    y = np.array(spectrum["y"])
+    
+    # Fit a quadratic polynomial
+    coefficients = np.polyfit(x, y, 2)
+    
+    # The coefficient of x^2 is the first coefficient
+    convexity = coefficients[0]
+    
+    # Generate the fitted y values
+    fitted_y = np.polyval(coefficients, x)
+
+    print("coefficients", coefficients)
+    
+    return convexity, x, fitted_y
+
 @callback(
     Output("spectra-container", "children"),
     Output("pagination", "active_page"),
@@ -170,16 +203,20 @@ def update_spectra_display(active_page, data_table):
 
     spectra_to_display = [_get_processed_spectrum(i) for i in ids_to_display]
     spectra_to_display = [format_spectrum(s) for s in spectra_to_display if s is not None]
+    temp = [estimate_convexity(s) for s in spectra_to_display]
+    estimated_convexity, x, fitted_y = zip(*temp)
 
-    # Generate line plots for the current page
+    print("estimated_convexity", estimated_convexity)
+
+        # Generate line plots for the current page
     children = [
         html.Div(
             [
                 html.Div(
                     [
-                    f"Database ID: {ids_to_display[idx]}",
-                    html.Br(),
-                    download_links[idx],
+                        f"Database ID: {ids_to_display[idx]}", html.Br(),
+                        f"Convexity: {estimated_convexity[idx].item():.2e}", html.Br(),
+                        download_links[idx],
                     ],
                     style={
                         "fontSize": "14px",
@@ -190,12 +227,22 @@ def update_spectra_display(active_page, data_table):
                 ),
                 dcc.Graph(
                     figure=Figure(
-                        data=Scatter(
-                            x=s["x"],
-                            y=s["y"],
-                            mode="lines",
-                            line=dict(color="blue"),
-                        ),
+                        data=[
+                            Scatter(
+                                x=s["x"],
+                                y=s["y"],
+                                mode="lines",
+                                name="Original Spectrum",
+                                line=dict(color="blue"),
+                            ),
+                            Scatter(
+                                x=x[idx],
+                                y=fitted_y[idx],
+                                mode="lines",
+                                name="Fitted Line",
+                                line=dict(color="red", dash="dash"),
+                            ),
+                        ],
                     ).update_layout(
                         title=None,  # Move the title to a separate Div
                         height=300,
