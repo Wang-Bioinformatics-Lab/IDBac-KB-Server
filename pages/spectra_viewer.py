@@ -137,33 +137,36 @@ def format_spectrum(spectrum: dict) -> dict:
 
     return {"x": x, "y": y}
 
-def estimate_convexity(spectrum: dict, window_size: int = 5) -> float:
+def estimate_convexity(spectrum: dict):
     """
-    Estimates the convexity of a spectrum.
+    Estimates the convexity of a spectrum by fitting a quadratic polynomial
+    and returning the coefficient of the x^2 term along with the fitted points.
 
     Args:
-        spectrum (dict): The spectrum to estimate the convexity of. 
+        spectrum (dict): The spectrum to estimate the convexity of.
                          Keys are "x" (array of x values) and "y" (array of y values).
-        window_size (int): The window size for smoothing the y values.
 
     Returns:
-        float: The convexity of the spectrum.
+        tuple: (float, np.ndarray, np.ndarray)
+               - The coefficient of the x^2 term in the polynomial fit.
+               - The x values of the fit (same as input x values).
+               - The fitted y values corresponding to the input x values.
     """
     x = np.array(spectrum["x"])
     y = np.array(spectrum["y"])
     
-    # Smooth the y values using a moving average
-    smoothed_y = uniform_filter1d(y, size=window_size)
+    # Fit a quadratic polynomial
+    coefficients = np.polyfit(x, y, 2)
     
-    # Calculate first and second derivatives
-    dx = np.gradient(x)
-    dy = np.gradient(smoothed_y, dx)
-    ddy = np.gradient(dy, dx)
+    # The coefficient of x^2 is the first coefficient
+    convexity = coefficients[0]
     
-    # Estimate convexity as the average second derivative
-    convexity = np.mean(ddy)
+    # Generate the fitted y values
+    fitted_y = np.polyval(coefficients, x)
+
+    print("coefficients", coefficients)
     
-    return convexity
+    return convexity, x, fitted_y
 
 @callback(
     Output("spectra-container", "children"),
@@ -200,17 +203,20 @@ def update_spectra_display(active_page, data_table):
 
     spectra_to_display = [_get_processed_spectrum(i) for i in ids_to_display]
     spectra_to_display = [format_spectrum(s) for s in spectra_to_display if s is not None]
-    estimated_convexity = [estimate_convexity(s) for s in spectra_to_display]
+    temp = [estimate_convexity(s) for s in spectra_to_display]
+    estimated_convexity, x, fitted_y = zip(*temp)
 
-    # Generate line plots for the current page
+    print("estimated_convexity", estimated_convexity)
+
+        # Generate line plots for the current page
     children = [
         html.Div(
             [
                 html.Div(
                     [
-                    f"Database ID: {ids_to_display[idx]}", f"Convexity: {estimated_convexity[idx]:.2f}",
-                    html.Br(),
-                    download_links[idx],
+                        f"Database ID: {ids_to_display[idx]}", html.Br(),
+                        f"Convexity: {estimated_convexity[idx].item():.2e}", html.Br(),
+                        download_links[idx],
                     ],
                     style={
                         "fontSize": "14px",
@@ -221,12 +227,22 @@ def update_spectra_display(active_page, data_table):
                 ),
                 dcc.Graph(
                     figure=Figure(
-                        data=Scatter(
-                            x=s["x"],
-                            y=s["y"],
-                            mode="lines",
-                            line=dict(color="blue"),
-                        ),
+                        data=[
+                            Scatter(
+                                x=s["x"],
+                                y=s["y"],
+                                mode="lines",
+                                name="Original Spectrum",
+                                line=dict(color="blue"),
+                            ),
+                            Scatter(
+                                x=x[idx],
+                                y=fitted_y[idx],
+                                mode="lines",
+                                name="Fitted Line",
+                                line=dict(color="red", dash="dash"),
+                            ),
+                        ],
                     ).update_layout(
                         title=None,  # Move the title to a separate Div
                         height=300,
