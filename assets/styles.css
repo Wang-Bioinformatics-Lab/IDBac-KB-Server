@@ -31,6 +31,20 @@
     background-size: contain;
     background-position: center;
     background-repeat: no-repeat;
+    margin-bottom: 20px; /* Add space below the image */
+}
+
+.subheader-image::after {
+    content: 'Created with BioRender.com';
+    position: absolute;
+    bottom: -20px; /* Position the text directly below the image */
+    right: 10px; /* Align the text to the bottom-right */
+    color: rgb(100, 100, 100); /* Adjust color for visibility */
+    font-size: 12px; /* Adjust font size */
+    background-color: rgba(255, 255, 255, 0.8); /* Optional: Background for readability */
+    padding: 2px 5px; /* Optional: Add padding to the text */
+    border-radius: 3px; /* Optional: Rounded corners */
+    pointer-events: none; /* Ensure it doesn't interfere with interactions */
 }
 
 .body {
