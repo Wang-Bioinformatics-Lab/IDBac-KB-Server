@@ -137,7 +137,7 @@ def format_spectrum(spectrum: dict) -> dict:
 
     return {"x": x, "y": y}
 
-def estimate_convexity(spectrum: dict):
+def estimate_convexity(spectrum: dict, rescale:bool=False) -> tuple:
     """
     Estimates the convexity of a spectrum by fitting a quadratic polynomial
     and returning the coefficient of the x^2 term along with the fitted points.
@@ -145,6 +145,7 @@ def estimate_convexity(spectrum: dict):
     Args:
         spectrum (dict): The spectrum to estimate the convexity of.
                          Keys are "x" (array of x values) and "y" (array of y values).
+        rescale (bool): Whether to rescale the x & y values before fitting.
 
     Returns:
         tuple: (float, np.ndarray, np.ndarray)
@@ -154,6 +155,12 @@ def estimate_convexity(spectrum: dict):
     """
     x = np.array(spectrum["x"])
     y = np.array(spectrum["y"])
+
+    if rescale:
+        # Rescale the x values between 0 and 100
+        x = (x - np.min(x)) / (np.max(x) - np.min(x)) * 100
+        # Rescale the y values between 0 and 100
+        y = (y - np.min(y)) / (np.max(y) - np.min(y)) * 100
     
     # Fit a quadratic polynomial
     coefficients = np.polyfit(x, y, 2)
@@ -205,8 +212,11 @@ def update_spectra_display(active_page, data_table):
     spectra_to_display = [format_spectrum(s) for s in spectra_to_display if s is not None]
     temp = [estimate_convexity(s) for s in spectra_to_display]
     estimated_convexity, x, fitted_y = zip(*temp)
+    temp = [estimate_convexity(s, rescale=True) for s in spectra_to_display]
+    estimated_convexity_rescaled, x_rescaled, fitted_y_rescaled = zip(*temp)
 
     print("estimated_convexity", estimated_convexity)
+    print("estimated_convexity_rescaled", estimated_convexity_rescaled)
 
         # Generate line plots for the current page
     children = [
@@ -215,7 +225,7 @@ def update_spectra_display(active_page, data_table):
                 html.Div(
                     [
                         f"Database ID: {ids_to_display[idx]}", html.Br(),
-                        f"Convexity: {estimated_convexity[idx].item():.2e}", html.Br(),
+                        f"Rescaled Convexity: {estimated_convexity_rescaled[idx].item():.2e}", html.Br(),
                         download_links[idx],
                     ],
                     style={
