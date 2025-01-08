@@ -1,5 +1,5 @@
 FROM ubuntu:22.04
-MAINTAINER Mingxun Wang "mwang87@gmail.com"
+LABEL maintainer="Mingxun Wang mwang87@gmail.com"
 
 RUN apt-get update && apt-get install -y build-essential libarchive-dev wget vim unzip zip curl
 
@@ -18,8 +18,8 @@ RUN apt-get update && \
     apt-get clean;
 
 # installing nextflow
-ENV NXF_VER=23.10.0
-RUN wget -qO- https://github.com/nextflow-io/nextflow/releases/download/v$NXF_VER/nextflow-$NXF_VER-all | bash && chmod +x nextflow && mv nextflow /usr/local/bin
+ENV NXF_VER=24.10.3
+RUN wget -qO- https://github.com/nextflow-io/nextflow/releases/download/v$NXF_VER/nextflow-$NXF_VER-dist | bash && chmod +x nextflow && mv nextflow /usr/local/bin
 
 COPY requirements.txt .
 RUN pip install -r requirements.txt
