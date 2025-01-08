@@ -209,7 +209,7 @@ def update_spectrum(table_data, table_selected):
     database_id = selected_row["database_id"]
 
     # Getting the processed spectrum
-    spectra_json = _get_processed_spectrum(database_id)
+    spectra_json = _get_processed_spectrum(database_id, 10) # Hardcoded to 10 Da bins for now
 
     ms_peaks = spectra_json["peaks"]
 
@@ -368,12 +368,17 @@ def checksum():
 def download():
     # Getting a single spectrum
     database_id = request.values.get("database_id")
+    # bin_width    = request.values.get("bin_size", 10)
 
+    # Nothing should be  hitting this, disabling for now
     if database_id == "ALL":
-        if dev_mode:
-            return send_from_directory("workflows/idbac_summarize_database/nf_output/", "output_merged_spectra.json")
-        else:
-            return send_from_directory("/app/workflows/idbac_summarize_database/nf_output/", "idbac_database.json")
+        # Raise 404
+        return "Not Found", 404
+    # if database_id == "ALL":
+    #     if dev_mode:
+    #         return send_from_directory(f"workflows/idbac_summarize_database/nf_output/{str(bin_width)}_da_bin/", "output_merged_spectra.json")
+    #     else:
+    #         return send_from_directory(f"/app/workflows/idbac_summarize_database/nf_output/{str(bin_width)}_da_bin/", "idbac_database.json")
 
     # Finding all the database files
     database_files = glob.glob("database/depositions/**/{}.json".format(os.path.basename(database_id)))
@@ -417,15 +422,16 @@ def download_mzml():
 def filtered_spectra():
     # Getting a single spectrum
     database_id = request.values.get("database_id")
+    bin_width   = request.values.get("bin_width", 10)
 
     if database_id == "ALL":
         if dev_mode:
-            return send_from_directory("workflows/idbac_summarize_database/nf_output/", "output_merged_spectra.json")
+            return send_from_directory(f"workflows/idbac_summarize_database/nf_output/{str(bin_width)}_da_bin/", "output_merged_spectra.json")
         else:
-            return send_from_directory("/app/workflows/idbac_summarize_database/nf_output/", "output_merged_spectra.json")
+            return send_from_directory(f"/app/workflows/idbac_summarize_database/nf_output/{str(bin_width)}_da_bin/", "output_merged_spectra.json")
 
     # Finding all the database files
-    database_files = glob.glob("/app/workflows/idbac_summarize_database/nf_output/output_spectra_json/**/{}.json".format(os.path.basename(database_id)))
+    database_files = glob.glob(f"/app/workflows/idbac_summarize_database/nf_output/{str(bin_width)}_da_bin/output_spectra_json/**/{os.path.basename(database_id)}.json")
 
     if len(database_files) == 0:
         return "File not found", 404
@@ -495,17 +501,18 @@ def download_tree_nwk():
         else:
             return "No Image Found", 404
 
-def _get_processed_spectrum(database_id:str)->dict:
+def _get_processed_spectrum(database_id:str, bin_width:int)->dict:
     """ Returns the processed spectrum for a given database id.
 
     Args:
         database_id (str): The database id to search for.
+        bin_width (int): The size of bins used in the spectrum (Da).
 
     Returns:
         dict: The processed spectrum.
     """
     # Finding all the database files
-    database_files = glob.glob("/app/workflows/idbac_summarize_database/nf_output/output_spectra_json/**/{}.json".format(os.path.basename(database_id)))
+    database_files = glob.glob(f"/app/workflows/idbac_summarize_database/nf_output/{str(bin_width)}_da_bin/output_spectra_json/**/{os.path.basename(database_id)}.json")
 
     if len(database_files) == 0:
         return None

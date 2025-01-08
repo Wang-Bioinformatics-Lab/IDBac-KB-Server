@@ -1,2 +1,5 @@
 database
 workflows
+conda_env
+venv
+scratch
