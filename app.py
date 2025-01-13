@@ -177,8 +177,8 @@ def load_database(search):
 def display_table(sumary_df, search):
     summary_df = pd.DataFrame(sumary_df)
     # Remove columns shown in "Additional Data"
-    shown_columns = set(["Strain name", "Strain ID", "Culture Collection", 
-                      "MALDI matrix name", "PI", "Isolate Source", "Source Location Name"])
+    shown_columns = set(["Strain name", "Culture Collection", "PI",
+                      "genus", "species", "Isolate Source",])
     # Make safe if columns are missing
     shown_columns = list(set(summary_df.columns) & shown_columns)
     hidden_columns = list(set(summary_df.columns) - set(shown_columns))
@@ -416,7 +416,6 @@ def download_mzml():
         download_name=f"{database_id}.mzML",
         mimetype="application/octet-stream"
     )
-
 
 @server.route("/api/spectrum/filtered", methods=["GET"])
 def filtered_spectra():
