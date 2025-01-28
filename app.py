@@ -143,7 +143,7 @@ def _get_url_param(param_dict, key, default):
               ],
               [Input('url', 'search')])
 def last_updated(search):
-    path_to_database_consolidated_file = os.path.join("/app/workflows/idbac_summarize_database/nf_output/", "output_merged_spectra.json")
+    path_to_database_consolidated_file = os.path.join("/app/workflows/idbac_summarize_database/nf_output/10_da_bin/", "output_merged_spectra.json")
 
     # checking the age of this file
     if os.path.exists(path_to_database_consolidated_file):
