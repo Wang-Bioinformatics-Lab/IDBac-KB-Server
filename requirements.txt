@@ -25,3 +25,4 @@ PyQt5
 openpyxl
 psims
 scipy==1.15.0
+tenacity

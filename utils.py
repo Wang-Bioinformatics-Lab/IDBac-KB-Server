@@ -11,10 +11,23 @@ import xmltodict
 from time import sleep
 import hashlib
 import os
+from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
 
 dev_mode = False
 if not os.path.isdir('/app'):
     dev_mode =  True
+
+# Define a retry decorator for requests
+@retry(
+    stop=stop_after_attempt(5),
+    wait=wait_exponential(multiplier=1, min=1, max=10),
+    retry=retry_if_exception_type((requests.exceptions.RequestException, requests.exceptions.ConnectTimeout)),
+    reraise=True,
+)
+def fetch_with_retry(url):
+    response = requests.get(url, timeout=10)
+    response.raise_for_status()  # Raise an error for non-2xx responses
+    return response
 
 def get_ncbi_taxid_from_genbank(genbank_accession:str)->int:
     """Gets the NCBI taxid from a genbank accession. Each genbank accession is
@@ -31,7 +44,7 @@ def get_ncbi_taxid_from_genbank(genbank_accession:str)->int:
 
     # First check the nucleotide database
     nucleotide_url = f"https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=nucleotide&term={genbank_accession}&retmode=json"
-    r = requests.get(nucleotide_url, timeout=10)
+    r = fetch_with_retry(nucleotide_url)
     nucleotide_json = r.json()
     sleep(0.5)
     # print("nucleotide_json", nucleotide_json, flush=True)
@@ -42,7 +55,7 @@ def get_ncbi_taxid_from_genbank(genbank_accession:str)->int:
             if len(nucleotide_json["esearchresult"]["idlist"]) > 0:
                 nucleotide_id = nucleotide_json["esearchresult"]["idlist"][0]
                 nucleotide_summary_url = f"https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esummary.fcgi?db=nucleotide&id={nucleotide_id}&retmode=json"
-                r = requests.get(nucleotide_summary_url, timeout=10)
+                r = fetch_with_retry(nucleotide_summary_url)
                 nucleotide_summary_json = r.json()
                 sleep(0.5)
 
@@ -54,7 +67,7 @@ def get_ncbi_taxid_from_genbank(genbank_accession:str)->int:
     # If not found in nucleotide, check the assembly database
     if nucleotide_taxid == "":
         assembly_url = f"https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=assembly&term={genbank_accession}&retmode=json"
-        r = requests.get(assembly_url, timeout=10)
+        r = fetch_with_retry(assembly_url)
         assembly_json = r.json()
         sleep(0.5)
 
@@ -63,7 +76,7 @@ def get_ncbi_taxid_from_genbank(genbank_accession:str)->int:
                 if len(assembly_json["esearchresult"]["idlist"]) > 0:
                     assembly_id = assembly_json["esearchresult"]["idlist"][0]
                     assembly_summary_url = f"https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esummary.fcgi?db=assembly&id={assembly_id}&retmode=json"
-                    r = requests.get(assembly_summary_url, timeout=10)
+                    r = fetch_with_retry(assembly_summary_url)
                     assembly_summary_json = r.json()
                     sleep(0.5)
 
@@ -91,7 +104,7 @@ def get_ncbi_taxid_from_genbank(genbank_accession:str)->int:
 #     # Updating the URL
 #     mapping_url = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/elink.fcgi?dbfrom=nucleotide&db=nucleotide&id={}&rettype=gb&retmode=xml".format(genbank_accession)
 
-#     r = requests.get(mapping_url, timeout=10)
+#     r = fetch_with_retry(mapping_url)
 #     sleep(0.5)
 
 #     result_dictionary = xmltodict.parse(r.text)
@@ -104,7 +117,7 @@ def get_ncbi_taxid_from_genbank(genbank_accession:str)->int:
 #     # here we will use an API to get the information
 #     xml_url = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=nuccore&id={}&retmode=xml".format(nuccore_id)
 
-#     r = requests.get(xml_url, timeout=10)
+#     r = fetch_with_retry(xml_url)
 #     sleep(0.5)
 #     result_dictionary = xmltodict.parse(r.text)
 
