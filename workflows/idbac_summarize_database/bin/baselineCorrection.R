@@ -6,11 +6,20 @@ process_mzML_file <- function(input_file, output_file) {
   # Read the mzML file
   spectra <- importMzMl(input_file)
 
+  spectra <- transformIntensity(spectra, method="sqrt")
+
+  spectra <- MALDIquant::smoothIntensity(spectra,
+                                         method = 'SavitzkyGolay',
+                                         halfWindowSize = 20L)
+
   # Perform baseline subtraction using the SNIP algorithm
-  spectra_baseline_corrected <- removeBaseline(spectra, method="SNIP", iterations=100)
+  spectra_baseline_corrected <- removeBaseline(spectra, method="TopHat")
 
   # Perform peak detection
-  peaks <- detectPeaks(spectra_baseline_corrected)
+  peaks <- detectPeaks(spectra_baseline_correctedm
+                      method='MAD',
+                      halfWindowSize=20L,
+                      minSNR=3,)
 
   # Export the processed spectra as an mzML file
   exportMzMl(peaks, output_file)
