@@ -1,8 +1,10 @@
 # -*- coding: utf-8 -*-
+import dash
 from dash import dcc
 from dash import html
 from dash import dash_table
 from dash import callback
+from dash import ctx  # Dash >=2.9.0
 from dash.dependencies import Input, Output, State
 import dash_bootstrap_components as dbc
 import json
@@ -37,6 +39,10 @@ PAGE_SIZE = 12
 SPECTRA_DASHBOARD = html.Div([
     dbc.CardHeader(html.H5("Database Spectra")),
     dbc.CardBody([
+        dbc.InputGroup([
+            dbc.Input(id="search-input", placeholder="Enter Database ID...", type="text"),
+            dbc.Button("Search", id="search-button", n_clicks=0),
+        ], className="mb-3"),
         html.Div(
             id="spectra-container",
             style={
@@ -179,17 +185,30 @@ def estimate_convexity(spectrum: dict, rescale:bool=False) -> tuple:
     Output("spectra-container", "children"),
     Output("pagination", "active_page"),
     Input("pagination", "active_page"),
-    Input('data-store', 'data'),  # Using data from dcc.Store
+    Input("search-button", "n_clicks"),
+    State("search-input", "value"),
+    Input('data-store', 'data'),    # Set to input so when data loads asyncronously it triggers a refreshasyncronously 
     prevent_initial_call=False
 )
-def update_spectra_display(active_page, data_table):
-    if active_page is None:
-        active_page = 1
-
+def update_spectra_display(active_page, n_clicks, search_id, data_table):
     if data_table is None:
-        return [], active_page
+        return [], 1
 
     data_table = pd.DataFrame(data_table)
+
+    # Determine if this callback was triggered by the search button
+    if ctx.triggered_id == "search-button" and search_id:
+        # Find the index of the searched ID
+        matching_rows = data_table.index[data_table['database_id'] == search_id].tolist()
+        if not matching_rows:
+            return dash.no_update  # No match found
+
+        index = matching_rows[0]
+        active_page = (index // PAGE_SIZE) + 1  # Calculate the page number
+
+    # Normal pagination handling
+    if active_page is None:
+        active_page = 1
 
     start_index = (active_page - 1) * PAGE_SIZE
     end_index = start_index + PAGE_SIZE
@@ -215,10 +234,6 @@ def update_spectra_display(active_page, data_table):
     temp = [estimate_convexity(s, rescale=True) for s in spectra_to_display]
     estimated_convexity_rescaled, x_rescaled, fitted_y_rescaled = zip(*temp)
 
-    print("estimated_convexity", estimated_convexity)
-    print("estimated_convexity_rescaled", estimated_convexity_rescaled)
-
-        # Generate line plots for the current page
     children = [
         html.Div(
             [
@@ -254,7 +269,7 @@ def update_spectra_display(active_page, data_table):
                             ),
                         ],
                     ).update_layout(
-                        title=None,  # Move the title to a separate Div
+                        title=None,
                         height=300,
                         margin=dict(l=10, r=10, t=10, b=10),
                     ),
@@ -269,4 +284,5 @@ def update_spectra_display(active_page, data_table):
         )
         for idx, s in enumerate(spectra_to_display)
     ]
+    
     return children, active_page
