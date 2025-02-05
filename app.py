@@ -460,6 +460,22 @@ def nextflow_report():
             return send_from_directory("/app/workflows/idbac_summarize_database", "IDBac_summarize_database_report.html")
         else:
             return "No Report Found", 404
+        
+@server.route("/analysis-utils/get_genus_options")
+def analysis_utils_get_genus_options():
+    summary_df = pd.read_csv("database/summary.tsv", sep="\t")
+    genus_options = summary_df.log[summary_df.genus.notna(), 'genus'].unique().tolist()
+
+    # Format as Key: Value JSON
+    genus_options = [{"value-key": str(genus), "display-key": str(genus).capitalize()} for genus in genus_options]
+
+@server.route("/analysis-utils/get_species_options")
+def analysis_utils_get_species_options():
+    summary_df = pd.read_csv("database/summary.tsv", sep="\t")
+    species_options = summary_df.log[summary_df.species.notna(), 'species'].unique().tolist()
+
+    # Format as Key: Value JSON
+    species_options = [{"value-key": str(species), "display-key": str(species).capitalize()} for species in species_options]
     
 @server.route("/download_tree_png", methods=["GET"])
 def download_tree_png():
