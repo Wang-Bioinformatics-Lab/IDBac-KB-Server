@@ -461,21 +461,24 @@ def nextflow_report():
         else:
             return "No Report Found", 404
         
-@server.route("/analysis-utils/get_genus_options")
+@server.route("/analysis-utils/get_genus_options", methods=["GET"])
 def analysis_utils_get_genus_options():
+    # TODO: Make more general to handle other columns
     summary_df = pd.read_csv("database/summary.tsv", sep="\t")
-    genus_options = summary_df.log[summary_df.genus.notna(), 'genus'].unique().tolist()
+    genus_options = summary_df.loc[summary_df.genus.notna(), 'genus'].unique().tolist()
 
     # Format as Key: Value JSON
     genus_options = [{"value-key": str(genus), "display-key": str(genus).capitalize()} for genus in genus_options]
+    return json.dumps(genus_options)
 
-@server.route("/analysis-utils/get_species_options")
+@server.route("/analysis-utils/get_species_options", methods=["GET"])
 def analysis_utils_get_species_options():
     summary_df = pd.read_csv("database/summary.tsv", sep="\t")
-    species_options = summary_df.log[summary_df.species.notna(), 'species'].unique().tolist()
+    species_options = summary_df.loc[summary_df.species.notna(), 'species'].unique().tolist()
 
     # Format as Key: Value JSON
     species_options = [{"value-key": str(species), "display-key": str(species).capitalize()} for species in species_options]
+    return json.dumps(species_options)
     
 @server.route("/download_tree_png", methods=["GET"])
 def download_tree_png():
