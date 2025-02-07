@@ -192,12 +192,13 @@ def display_table(sumary_df, search):
 
 # We will plot spectra based on which row is selected in the table
 @app.callback(
-    Output('output', 'children'),
+    Output('spectra-plot', 'children'),
     [   
+        Input('spectra-bin-size', 'value'),
         Input('displaytable', 'derived_virtual_data'),
         Input('displaytable', 'derived_virtual_selected_rows')
     ])
-def update_spectrum(table_data, table_selected):
+def update_spectrum(spectra_bin_size, table_data, table_selected):
     # Getting the row values
 
     if table_selected is None or len(table_selected) == 0:
@@ -209,7 +210,7 @@ def update_spectrum(table_data, table_selected):
     database_id = selected_row["database_id"]
 
     # Getting the processed spectrum
-    spectra_json = _get_processed_spectrum(database_id, 10) # Hardcoded to 10 Da bins for now
+    spectra_json = _get_processed_spectrum(database_id, int(spectra_bin_size))
 
     ms_peaks = spectra_json["peaks"]
 
@@ -391,13 +392,43 @@ def download():
     
     return send_from_directory(os.path.dirname(database_files[0]), os.path.basename(database_files[0]))
 
-@server.route("/api/spectrum/mzml", methods=["GET"])
-def download_mzml():
+@server.route("/api/spectrum/mzml-raw", methods=["GET"])
+def download_mzml_raw():
+    # Get the database_id from the request
+    database_id = request.args.get("database_id")
+    
+    if not database_id:
+        return "Database ID is required", 400
+
+    # Find the corresponding JSON file for the database ID
+    database_files = glob.glob(f"database/depositions/**/{os.path.basename(database_id)}.json")
+
+    if len(database_files) == 0:
+        return "File not found", 404
+
+    if len(database_files) > 1:
+        return "Multiple files found", 500
+    
+    # Convert the file to mzML format
+    mzml_bytes = convert_to_mzml(database_files[0])
+
+    # Return the mzML bytes as a downloadable file
+    mzml_bytes.seek(0)
+    return send_file(
+        mzml_bytes,
+        as_attachment=True,
+        download_name=f"{database_id}.mzML",
+        mimetype="application/octet-stream"
+    )
+
+@server.route("/api/spectrum/mzml-filtered", methods=["GET"])
+def download_mzml_filtered():
     # Getting a single spectrum
     database_id = request.values.get("database_id")
+    bin_width   = request.values.get("bin_width", 10)
 
     # Finding all the database files
-    database_files = glob.glob("database/depositions/**/{}.json".format(os.path.basename(database_id)))
+    database_files = f"/app/workflows/idbac_summarize_database/nf_output/{str(bin_width)}_da_bin/output_spectra_json/**/{os.path.basename(database_id)}.json"
 
     if len(database_files) == 0:
         return "File not found", 404
@@ -416,6 +447,7 @@ def download_mzml():
         download_name=f"{database_id}.mzML",
         mimetype="application/octet-stream"
     )
+
 
 @server.route("/api/spectrum/filtered", methods=["GET"])
 def filtered_spectra():

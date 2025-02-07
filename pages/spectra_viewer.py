@@ -220,7 +220,7 @@ def update_spectra_display(active_page, n_clicks, search_id, data_table):
     download_links = [
         html.A(
             "Download Raw",
-            href=f"/api/spectrum/mzml?database_id={database_id}",
+            href=f"/api/spectrum/mzml-raw?database_id={database_id}",
             target="_blank",
             style={"margin": "5px"},
         )

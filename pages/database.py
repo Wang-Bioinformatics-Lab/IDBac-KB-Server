@@ -68,12 +68,45 @@ DB_DISPLAY_DASHBOARD = [
 MIDDLE_DASHBOARD = [
     dbc.CardHeader(html.H5("Data Exploration")),
     dbc.CardBody(
-        [
+        [   
+            # Select bin size for the histogram
+            dbc.InputGroup(
+                [
+                    dbc.InputGroupText("Bin Size"),
+                    dbc.Select(id="spectra-bin-size",
+                              options=[
+                                  {"label": "1 Da", "value": 1},
+                                  {"label": "5 Da", "value": 5},
+                                  {"label": "10 Da", "value": 10},
+                                ],
+                              value=10,
+                            ),
+                ],
+                id="spectra-bin-size-input",
+                style={"display": "none"},
+            ),
             dcc.Loading(
-                id="output",
+                id="spectra-plot",
                 children=[html.Div([html.Div(id="loading-output-23")])],
                 type="default",
             ),
+            # Wrap ButtonGroup inside Row and Col to center it
+            dbc.Row(
+                dbc.Col(
+                    dbc.ButtonGroup(
+                        [
+                            dbc.Button("Download Binned", color="primary", id="download-binned-spectra"),
+                            dbc.Button("Download Raw", color="primary", id="download-raw-spectra"),
+                        ],
+                        id="download-buttons",
+                        style={"display": "none", "width": "100%"}
+                    ),
+                    width="auto",  # Center in a 12-column grid
+                ),
+                className="d-flex justify-content-center"
+            ),
+            dcc.Download(id="download-raw-mzml"),
+            dcc.Download(id="download-binned-mzml"),
         ]
     )
 ]
@@ -256,8 +289,6 @@ def update_dynamic_pie_chart(selected_taxonomy):
         # with pd.option_context('display.max_rows', None, 'display.max_columns', None):  
         #     print(dynamic_summary_df[selected_taxonomy].value_counts(), flush=True)
 
-        print(dynamic_summary_df.loc[dynamic_summary_df[selected_taxonomy] == 'No Taxonomy'], flush=True)
-
         # Get counts by Genus and Species for px.bar
         dynamic_summary_df = dynamic_summary_df.groupby([selected_taxonomy]).size().reset_index(name="count")
 
@@ -289,6 +320,60 @@ def update_dynamic_pie_chart(selected_taxonomy):
             yref="paper"
         )
     return fig
+
+@callback(
+    Output('download-binned-mzml', 'data'),
+    Input('download-binned-spectra', 'n_clicks'),
+    State('spectra-bin-size', 'value'),
+    State('displaytable', 'derived_virtual_data'),
+    State('displaytable', 'derived_virtual_selected_rows'),
+)
+def download_binned(n_clicks, bin_width, table_data, table_selected):
+    if n_clicks is None or table_selected is None or len(table_selected) == 0:
+        return None
+    
+    # Get the selected row data
+    selected_row = table_data[table_selected[0]]
+    database_id = selected_row["database_id"]
+    
+    return {'content': f"/api/spectrum/mzml-filtered?database_id={database_id}&bin_width={bin_width}",
+            'filename': "binned_spectra.mzML"}
+
+@callback(
+    Output('download-raw-mzml', 'data'),
+    Input('download-raw-spectra', 'n_clicks'),
+    State('displaytable', 'derived_virtual_data'),
+    State('displaytable', 'derived_virtual_selected_rows'),
+)
+def download_raw(n_clicks, table_data, table_selected):
+    # Check if button was clicked and if a row is selected
+    if n_clicks is None or table_selected is None or len(table_selected) == 0:
+        return None  # No download action
+    
+    # Get the selected row data
+    selected_row = table_data[table_selected[0]]
+    database_id = selected_row["database_id"]
+
+    # Return the download details
+    return {
+        'content': f"/api/spectrum/mzml-raw?database_id={database_id}",
+        'filename': "raw_spectra.mzML"
+    }
+
+
+# Callback to update visibility based on table selection
+@callback(
+    Output("download-buttons", "style"),
+    Output("spectra-bin-size-input", "style"),
+    Input("displaytable", "derived_virtual_selected_rows"),
+)
+def update_button_visibility(selected_rows):
+    # Check if there are any selected rows
+    if selected_rows:
+        return {"display": "block"}, {"display": "flex"}  # Show buttons if rows are selected
+    else:
+        return {"display": "none"}, {"display": "none"}  # Hide buttons if no rows are selected
+
 
 def layout(**kwargs):
     return html.Div(children=[
