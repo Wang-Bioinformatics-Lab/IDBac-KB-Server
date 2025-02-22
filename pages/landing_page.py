@@ -158,10 +158,10 @@ def layout(**kwargs):
             html.Hr(style={"width": "60%", "margin": "auto"}),
             DATABASE_CONTENTS,
             html.Div(className="subheader-image"),
+            html.Br(),
+            html.Hr(style={"width": "60%", "margin": "auto"}),
             html.Div(
                 children=[
-                    html.Br(),
-                    html.Hr(style={"width": "60%", "margin": "auto"}),
                     BODY
                 ], className="page-content"
             )
