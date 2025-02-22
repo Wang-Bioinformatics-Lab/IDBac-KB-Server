@@ -86,6 +86,14 @@ def task_summarize_depositions():
     # Saving the summary
     df.to_csv("database/summary.tsv", index=False, sep="\t")
 
+    # Save summary statistics
+    summary_statistics = {
+        "num_entries": len(df),
+        "num_genera": len(df["genus"].unique())
+    }
+    with open("database/summary_statistics.json", "w") as f:
+        f.write(json.dumps(summary_statistics))
+
     # Update taxonomic tree
     generate_tree(df[df['NCBI taxid'].notna()]['NCBI taxid'])
 

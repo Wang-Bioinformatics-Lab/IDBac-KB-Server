@@ -1,6 +1,9 @@
 import dash
 from dash import html, register_page
 import dash_bootstrap_components as dbc
+from dash.dependencies import Input, Output, State
+from dash import callback
+import json
 
 register_page(
     __name__,
@@ -16,6 +19,38 @@ text_under_button2 = "Deposit spectra of genetically verified strains to the pub
 text_under_button3 = "Explore number and type of strains in the database and their associated metadata."
 text_under_button4 = "Interested in IDBac but not ready to commit? Explore the IDBac platform using a sample dataset."
 text_under_button5 = "Click here to access instructions on how to use IDBac."
+
+
+DATABASE_CONTENTS = dbc.Container(html.H3(
+    id="database-contents-text",
+    style={"color": "#d88000"},  # You can change the color here
+    className="text-center"
+    ),
+    fluid=True,
+    className="database-contents",
+    style={"margin-top": "5px"}
+)
+
+@callback(
+    Output("database-contents-text", "children"),
+    Input("database-contents-text", "children"),
+    prevent_initial_call=False
+)
+def update_database_contents(_,):
+    num_entries = 0
+    num_genera = 0
+    stats_path = "database/summary_statistics.json"
+
+    try:
+        stats = json.load(open(stats_path, "r", encoding='utf-8'))
+        num_entries = stats["num_entries"]
+        num_genera = stats["num_genera"]
+        # TODO: Make pie chart statistics a part of summary stats
+    except Exception as _:
+        return ""
+    
+    return f"Collective Contributions: {num_entries} Entries & {num_genera} genera"
+
 
 BUTTONS = dbc.Col(
     dbc.Row(
@@ -120,11 +155,13 @@ def layout(**kwargs):
         children=[
             html.Div(className="header-image"),
             html.H3(TAGLINE, className="tagline text-center"),
+            html.Hr(style={"width": "60%", "margin": "auto"}),
+            DATABASE_CONTENTS,
             html.Div(className="subheader-image"),
             html.Div(
                 children=[
                     html.Br(),
-                    html.Hr(),
+                    html.Hr(style={"width": "60%", "margin": "auto"}),
                     BODY
                 ], className="page-content"
             )
