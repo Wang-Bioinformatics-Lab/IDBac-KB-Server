@@ -7,8 +7,8 @@ from dash.dependencies import Input, Output, State
 import dash_bootstrap_components as dbc
 import plotly
 import plotly.express as px
-
 import os
+import logging
 
 import pandas as pd
 
@@ -21,6 +21,23 @@ register_page(
     top_nav=True,
     path='/database'
 )
+
+HOVERTILES = dbc.Card(
+    [
+        dbc.CardHeader(html.H5("Culture Collections")),
+        dbc.CardBody(
+            [
+                html.H3(
+                    id="database-contents-text",
+                    style={"color": "#d88000", "marginBottom": "20px"},  # You can change the color here
+                    className="text-center"
+                ),
+                dbc.Row(id="tiles-container", className="g-2"),
+            ]
+        )
+    ]
+)
+
 
 DATASELECTION_CARD = [
     dbc.CardHeader(html.H5("IDBac KB Spectra List")),
@@ -228,6 +245,13 @@ BODY = dbc.Container(
         dcc.Location(id='url', refresh=False),
         dbc.Row([
             dbc.Col(
+                dbc.Card(HOVERTILES),
+                className="w-100"
+            ),
+        ],
+        style={"marginTop": 30}),
+        dbc.Row([
+            dbc.Col(
                 dbc.Card(DB_DISPLAY_DASHBOARD),
                 className="w-100"
             ),
@@ -253,18 +277,69 @@ BODY = dbc.Container(
     className="",
 )
 
+# Load the database once and send to dcc.store on page load
+# @callback(
+#     Output('data-store', 'data'),
+#     Input('url', 'pathname'),
+# )
+# def load_database(pathname):
+#     if not os.path.exists("database/summary.tsv"):
+#         return None
+    
+#     try:
+#         df = pd.read_csv("database/summary.tsv", sep="\t")
+#         return df.to_dict(orient='records')
+#     except Exception as e:
+#         logging.error("Error loading database", e)
+#         return None
+
+# Callback to update the hover tiles based on DB contents
+@callback(
+    Output('tiles-container', 'children'),
+    Input('data-store', 'data'),
+)
+def update_hover_tiles(data):
+    df = pd.DataFrame(data)
+    df = df.loc[df['Culture Collection'].notna(), :]
+    df = df.loc[df['genus'].notna(), :]
+    culture_collections = df["Culture Collection"].unique()
+    tiles = []
+    for collection in culture_collections:
+        unique_genera = df.loc[df['Culture Collection'] == collection, 'genus'].unique()
+        if len(unique_genera) == 0:
+            continue
+        tooltip_text = ', '.join(unique_genera)
+        tiles.append(
+            dbc.Col(
+            dbc.Card(
+                [
+                dbc.CardBody(
+                    [
+                    html.H5(collection),
+                    html.P(f"{len(df[df['Culture Collection'] == collection])} entries"),
+                    dbc.Tooltip(tooltip_text, target=f"tooltip-{collection}")
+                    ]
+                )
+                ],
+                id=f"tooltip-{collection}"
+            )
+            )
+        )
+    return tiles
+
 
 # Callback to update the second pie chart based on the dropdown value
 @callback(
     Output('dynamic-taxonomy-pie-chart', 'figure'),
-    Input('taxonomy-dropdown', 'value')
+    Input('taxonomy-dropdown', 'value'),
+    Input('data-store', 'data'),
 )
-def update_dynamic_pie_chart(selected_taxonomy):
+def update_dynamic_pie_chart(selected_taxonomy, data):
     dynamic_summary_df = None
     count_16S = 0
     number_of_database_entries = ""
-    if os.path.exists("database/summary.tsv"):
-        dynamic_summary_df = pd.read_csv("database/summary.tsv", sep="\t")
+    if data is not None:
+        dynamic_summary_df = pd.DataFrame(data)
 
         dynamic_summary_df[selected_taxonomy] = dynamic_summary_df[selected_taxonomy].fillna("No Taxonomy")
         

@@ -41,6 +41,8 @@ dev_mode = False
 if not os.path.isdir('/app'):
     dev_mode =  True
 
+logging.basicConfig(level=logging.WARNING)
+
 server = Flask(__name__)
 
 app = dash.Dash(
@@ -131,6 +133,7 @@ NAVBAR = dbc.Navbar(
 
 # Container should be full width
 app.layout = dbc.Container([ 
+    dcc.Store(id='data-store', storage_type='memory',),
     NAVBAR,
     dash.page_container
 ], fluid=True, style={"width": "100%", "margin": "0", "padding": "0"})
@@ -159,12 +162,16 @@ def last_updated(search):
             Output('data-store', 'data'),  # Update the data in the store
             Input('url', 'search'))
 def load_database(search):
-    summary_df = pd.read_csv("database/summary.tsv", sep="\t")
-    
-    # Prepare columns and data for DataTable if needed, or return directly for storage
-    data = summary_df.to_dict('records')  # Data as a list of records
-
-    return data  # This populates the data in the Store
+    if not os.path.exists("database/summary.tsv"):
+        logging.error("Database Summary File Not Found at database/summary.tsv")
+        return None
+    try:
+        summary_df = pd.read_csv("database/summary.tsv", sep="\t")
+        data = summary_df.to_dict('records')
+        return data
+    except Exception as e:
+        logging.error("Error Loading Database Summary File:", e)
+        return None
 
 @app.callback([
                 Output('displaytable', 'data'),
