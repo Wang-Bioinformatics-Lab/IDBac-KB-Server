@@ -32,13 +32,13 @@ register_page(
     __name__,
     name='IDBac Raw Spectra Viewer',
     top_nav=True,
-    path='/admin/raw-qc'
+    path='/raw-viewer'
 )
 
 PAGE_SIZE = 12
 
 SPECTRA_DASHBOARD = html.Div([
-    dbc.CardHeader(html.H5("Database Spectra")),
+    dbc.CardHeader(html.H5("Raw Database Spectra")),
     dbc.CardBody([
         # User input for database id
         dbc.Input(
@@ -121,9 +121,14 @@ def format_spectrum(spectrum: dict) -> List[np.array]:
     Output("raw-spectra", "children"),
     Input('data-store', 'data'),  # Using data from dcc.Store
     Input("database-id", 'value'),
-    prevent_initial_call=True
+    Input('url', 'search'),
+    prevent_initial_call=False
 )
-def update_raw_viewer(data_table, database_id):
+def update_raw_viewer(data_table, database_id, search):
+    print("got database_id", database_id, "search", search, flush=True)
+    if database_id is None and search is not None:
+        database_id = search.split('=')[-1]
+
     if data_table is None:
         return []
 
@@ -133,9 +138,9 @@ def update_raw_viewer(data_table, database_id):
         database_id = data_table.iloc[0]["database_id"]
     
     # Create download links for each database id
-    download_link = html.A(                                                                         # TODO: Add new endpoint for raw spectra mzml
+    download_link = html.A(
                             "Download Raw",
-                            href=f"/api/spectrum/mzml?database_id={database_id}",
+                            href=f"/api/spectrum/mzml-raw?database_id={database_id}",
                             target="_blank",
                             style={"margin": "5px"},
                         )
@@ -150,7 +155,7 @@ def update_raw_viewer(data_table, database_id):
     fig = make_subplots(rows=num_spectra, cols=1, shared_xaxes=True, vertical_spacing=0.02)
 
     for i, s in enumerate(spectra_to_display, start=1):
-        fig.add_trace(go.Scatter(x=s[:, 0], y=s[:, 1], mode='lines', name=f"Spectrum {i}"), row=i, col=1)
+        fig.add_trace(go.Scatter(x=s[:, 0], y=s[:, 1], mode='lines', name=f"Replicate {i}"), row=i, col=1)
 
     fig.update_layout(
         height=200 * num_spectra,
@@ -163,7 +168,7 @@ def update_raw_viewer(data_table, database_id):
         html.Div(
             [
                 html.Div(f"Database ID: {database_id}", style={"fontSize": "14px", "fontWeight": "bold", "textAlign": "center", "marginBottom": "5px",}),
-                # html.Div(download_link, style={"textAlign": "center", "marginBottom": "5px"}),    # TODO: Add new endpoint for raw spectra mzml
+                html.Div(download_link, style={"textAlign": "center", "marginBottom": "5px"}),
             ],
             style={"display":"block", "width":"100%"}
         ),

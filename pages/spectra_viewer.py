@@ -37,7 +37,7 @@ register_page(
 PAGE_SIZE = 12
 
 SPECTRA_DASHBOARD = html.Div([
-    dbc.CardHeader(html.H5("Database Spectra")),
+    dbc.CardHeader(html.H5("Processed Database Spectra")),
     dbc.CardBody([
         dbc.InputGroup([
             dbc.Input(id="search-input", placeholder="Enter Database ID...", type="text"),

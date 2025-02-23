@@ -114,6 +114,7 @@ MIDDLE_DASHBOARD = [
                         [
                             dbc.Button("Download Binned", color="primary", id="download-binned-spectra"),
                             dbc.Button("Download Raw", color="primary", id="download-raw-spectra"),
+                            dbc.Button("View Raw", color="primary", id="view-raw-spectra", href=""),
                         ],
                         id="download-buttons",
                         style={"display": "none", "width": "100%"}
@@ -127,6 +128,19 @@ MIDDLE_DASHBOARD = [
         ]
     )
 ]
+
+@callback(
+    Output('view-raw-spectra', 'href'),
+    Input('displaytable', 'derived_virtual_selected_rows'),
+    State('displaytable', 'derived_virtual_data'),
+)
+def update_view_raw_link(selected_rows, table_data):
+    if selected_rows is None or len(selected_rows) == 0:
+        return ""
+    
+    selected_row = table_data[selected_rows[0]]
+    database_id = selected_row["database_id"]
+    return f"/raw-viewer/?database_id={database_id}"
 
 db_content_dropdown_options = [
     # {'label': 'Kingdom', 'value': 'Kingdom'},
