@@ -322,6 +322,12 @@ def update_hover_tiles(data):
         unique_genera = df.loc[df['Culture Collection'] == collection, 'genus'].unique()
         if len(unique_genera) == 0:
             continue
+        num_entries = len(df[df['Culture Collection'] == collection])
+        under_text = ""
+        if num_entries == 1:
+            under_text = "1 entry"
+        elif num_entries > 1:
+            under_text = f"{num_entries} entries"
         tooltip_text = ', '.join(unique_genera)
         tiles.append(
             dbc.Col(
@@ -330,7 +336,7 @@ def update_hover_tiles(data):
                         dbc.CardBody(
                             [
                                 html.H5(collection),
-                                html.P(f"{len(df[df['Culture Collection'] == collection])} entries"),
+                                html.P(under_text),
                                 dbc.Tooltip(tooltip_text, target=f"tooltip-{collection}")
                             ]
                         )
