@@ -311,18 +311,19 @@ def update_hover_tiles(data):
         tooltip_text = ', '.join(unique_genera)
         tiles.append(
             dbc.Col(
-            dbc.Card(
-                [
-                dbc.CardBody(
+                dbc.Card(
                     [
-                    html.H5(collection),
-                    html.P(f"{len(df[df['Culture Collection'] == collection])} entries"),
-                    dbc.Tooltip(tooltip_text, target=f"tooltip-{collection}")
-                    ]
-                )
-                ],
-                id=f"tooltip-{collection}"
-            )
+                        dbc.CardBody(
+                            [
+                                html.H5(collection),
+                                html.P(f"{len(df[df['Culture Collection'] == collection])} entries"),
+                                dbc.Tooltip(tooltip_text, target=f"tooltip-{collection}")
+                            ]
+                        )
+                    ],
+                    id=f"tooltip-{collection}"
+                ),
+                width=4  # Adjust the width to control the number of tiles per row
             )
         )
     return tiles
