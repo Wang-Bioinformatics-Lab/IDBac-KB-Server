@@ -327,7 +327,7 @@ def update_hover_tiles(data):
         if num_entries == 1:
             under_text = "1 entry"
         elif num_entries > 1:
-            under_text = f"{num_entries} entries"
+            under_text = f"{num_entries:,} entries"
         tooltip_text = ', '.join(unique_genera)
         tiles.append(
             dbc.Col(

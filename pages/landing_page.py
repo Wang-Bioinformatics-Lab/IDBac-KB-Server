@@ -49,7 +49,7 @@ def update_database_contents(_,):
     except Exception as _:
         return ""
     
-    return f"Collective Contributions: {num_entries} Entries & {num_genera} genera"
+    return f"Collective Contributions: {num_entries:,} Entries & {num_genera:,} genera"
 
 
 BUTTONS = dbc.Col(
