@@ -376,17 +376,9 @@ def checksum():
 def download():
     # Getting a single spectrum
     database_id = request.values.get("database_id")
-    # bin_width    = request.values.get("bin_size", 10)
 
-    # Nothing should be  hitting this, disabling for now
     if database_id == "ALL":
-        # Raise 404
-        return "Not Found", 404
-    # if database_id == "ALL":
-    #     if dev_mode:
-    #         return send_from_directory(f"workflows/idbac_summarize_database/nf_output/{str(bin_width)}_da_bin/", "output_merged_spectra.json")
-    #     else:
-    #         return send_from_directory(f"/app/workflows/idbac_summarize_database/nf_output/{str(bin_width)}_da_bin/", "idbac_database.json")
+        return send_from_directory("database/nf_output/idbac_database.json")
 
     # Finding all the database files
     database_files = glob.glob("database/depositions/**/{}.json".format(os.path.basename(database_id)))
