@@ -378,7 +378,7 @@ def download():
     database_id = request.values.get("database_id")
 
     if database_id == "ALL":
-        return send_from_directory("database/nf_output/idbac_database.json")
+        return send_from_directory("database/nf_output/idbac_database.json", "idbac_database.json")
 
     # Finding all the database files
     database_files = glob.glob("database/depositions/**/{}.json".format(os.path.basename(database_id)))
