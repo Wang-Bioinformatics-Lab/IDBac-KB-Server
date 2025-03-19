@@ -59,6 +59,10 @@ services:
     networks:
       - default
       - nginx-net
+    deploy:
+      resources:
+        limits:
+          memory: 25g
 
   idbac-kb-rabbitmq:
     container_name: idbac-kb-rabbitmq
