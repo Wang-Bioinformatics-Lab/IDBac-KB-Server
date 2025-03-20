@@ -24,11 +24,11 @@ process formatDatabase {
     file 'idbac_database.mzML'
 
     """
-    python $TOOL_FOLDER/format_database.py \
-    $idbac_database_folder \
-    idbac_database.json \
-    idbac_database_scanmapping.tsv \
-    idbac_database.mzML
+    python  $TOOL_FOLDER/format_database.py \
+            $idbac_database_folder \
+            idbac_database.json \
+            idbac_database_scanmapping.tsv \
+            idbac_database.mzML
     """
 }
 
