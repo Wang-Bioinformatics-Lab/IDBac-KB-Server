@@ -12,7 +12,7 @@ register_page(
     path='/'
 )
 
-TAGLINE = "A place to ID bacteria, organize strain collections & ask reasearch questions."
+TAGLINE = "A place to ID bacteria, organize strain collections & ask research questions."
 
 text_under_button1 = "Upload and analyze your MALDI-TOF MS data: protein dendrograms, metabolite association networks, or heatmaps."
 text_under_button2 = "Deposit spectra of genetically verified strains to the public IDBac database."
