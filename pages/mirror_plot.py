@@ -69,10 +69,10 @@ SPECTRA_DASHBOARD = html.Div([
                     # Mass Range
                     dcc.RangeSlider(
                         id="mirror-plot-mass-range",
-                        min=2000,
+                        min=2_000,
                         max=20_000,
                         step=10,
-                        value=[3, 20_000],
+                        value=[3_000, 20_000],
                         marks=None,
                         tooltip={"placement": "bottom", "always_visible": True},
                     ),
@@ -174,6 +174,22 @@ def create_mirror_plot(spectrum_a, spectrum_b=None, mass_range=None):
     """
     fig = Figure()
 
+    def filter_mass_range(mz_values, intensity_values, mass_range):
+        """ Filters the mz and intensity values based on the mass range.
+
+        Args:
+            mz_values (list): The mz values.
+            intensity_values (list): The intensity values.
+            mass_range (list): The mass range.
+
+        Returns:
+            tuple: Filtered mz and intensity values.
+        """
+        if mass_range is None:
+            return mz_values, intensity_values
+        mask = (mz_values >= mass_range[0]) & (mz_values <= mass_range[1])
+        return mz_values[mask], intensity_values[mask]
+
     # Function to create stem plot traces without markers
     def add_stem_trace(fig, mz_values, intensity_values, color):
         for mz, intensity in zip(mz_values, intensity_values):
@@ -190,17 +206,18 @@ def create_mirror_plot(spectrum_a, spectrum_b=None, mass_range=None):
     # First spectrum
     mz_a = [x['mz'] for x in spectrum_a['peaks']]
     i_a = [x['i'] for x in spectrum_a['peaks']]
+    mz_a, i_a = filter_mass_range(np.array(mz_a), np.array(i_a), mass_range)
     add_stem_trace(fig, mz_a, i_a, 'blue')
 
     if spectrum_b:
         # Second spectrum (inverted intensities)
         mz_b = [x['mz'] for x in spectrum_b['peaks']]
         i_b = [-x['i'] for x in spectrum_b['peaks']]
+        mz_b, i_b = filter_mass_range(np.array(mz_b), np.array(i_b), mass_range)
         add_stem_trace(fig, mz_b, i_b, 'red')
 
     if mass_range:
-        fig.update_xaxes(range=mass_range)
-
+        fig.update_xaxes(range=(mass_range[0]-50, mass_range[1]+50))
     return fig
 
 @callback(
