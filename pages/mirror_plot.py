@@ -162,36 +162,30 @@ def get_id_from_name(strain_name:str, data:dict)->str:
         return candidates[0], "Multiple candidates found."
     return candidates[0], None
 
-def create_mirror_plot(spectrum_a, spectrum_b=None, mass_range=None):
-    """ Creates a mirror plot of two spectra using stem plots without markers at the end.
+
+def create_mirror_plot(spectrum_a, spectrum_b=None, mass_range=None, mass_tolerance=0.1):
+    """ Creates a mirror plot of two spectra using stem plots and computes cosine similarity.
 
     Args:
         spectrum_a (dict): The first spectrum.
         spectrum_b (dict, optional): The second spectrum.
+        mass_range (tuple, optional): The mass range to filter peaks (min, max).
+        mass_tolerance (float, optional): The mass tolerance for matching peaks.
 
     Returns:
-        Figure: The mirror plot figure.
+        tuple: (Figure, cosine similarity score)
     """
     fig = Figure()
 
     def filter_mass_range(mz_values, intensity_values, mass_range):
-        """ Filters the mz and intensity values based on the mass range.
-
-        Args:
-            mz_values (list): The mz values.
-            intensity_values (list): The intensity values.
-            mass_range (list): The mass range.
-
-        Returns:
-            tuple: Filtered mz and intensity values.
-        """
+        """Filters the mz and intensity values based on the mass range."""
         if mass_range is None:
             return mz_values, intensity_values
         mask = (mz_values >= mass_range[0]) & (mz_values <= mass_range[1])
         return mz_values[mask], intensity_values[mask]
 
-    # Function to create stem plot traces without markers
     def add_stem_trace(fig, mz_values, intensity_values, color):
+        """Adds a stem plot trace for given mz and intensity values."""
         for mz, intensity in zip(mz_values, intensity_values):
             fig.add_trace(
                 Scatter(
@@ -204,21 +198,71 @@ def create_mirror_plot(spectrum_a, spectrum_b=None, mass_range=None):
             )
 
     # First spectrum
-    mz_a = [x['mz'] for x in spectrum_a['peaks']]
-    i_a = [x['i'] for x in spectrum_a['peaks']]
-    mz_a, i_a = filter_mass_range(np.array(mz_a), np.array(i_a), mass_range)
-    add_stem_trace(fig, mz_a, i_a, 'blue')
+    mz_a = np.array([x['mz'] for x in spectrum_a['peaks']])
+    i_a = np.array([x['i'] for x in spectrum_a['peaks']])
+    mz_a, i_a = filter_mass_range(mz_a, i_a, mass_range)
+
+    cosine_similarity = None  # Default in case there's no second spectrum
 
     if spectrum_b:
         # Second spectrum (inverted intensities)
-        mz_b = [x['mz'] for x in spectrum_b['peaks']]
-        i_b = [-x['i'] for x in spectrum_b['peaks']]
-        mz_b, i_b = filter_mass_range(np.array(mz_b), np.array(i_b), mass_range)
-        add_stem_trace(fig, mz_b, i_b, 'red')
+        mz_b = np.array([x['mz'] for x in spectrum_b['peaks']])
+        i_b = np.array([x['i'] for x in spectrum_b['peaks']])
+        mz_b, i_b = filter_mass_range(mz_b, i_b, mass_range)
 
+        # Identify matching peaks within mass tolerance
+        matched_indices_a = []
+        matched_indices_b = []
+        matched_intensities_a = []
+        matched_intensities_b = []
+
+        for idx_a, mz_val_a in enumerate(mz_a):
+            diffs = np.abs(mz_b - mz_val_a)
+            min_idx = np.argmin(diffs)
+            if diffs[min_idx] <= mass_tolerance:
+                matched_indices_a.append(idx_a)
+                matched_indices_b.append(min_idx)
+                matched_intensities_a.append(i_a[idx_a])
+                matched_intensities_b.append(i_b[min_idx])
+
+        # Compute cosine similarity if there are matches
+        if matched_intensities_a and matched_intensities_b:
+            vec_a = np.array(matched_intensities_a)
+            vec_b = np.array(matched_intensities_b)
+
+            dot_product = np.dot(vec_a, vec_b)
+            norm_a = np.linalg.norm(vec_a)
+            norm_b = np.linalg.norm(vec_b)
+
+            if norm_a > 0 and norm_b > 0:
+                cosine_similarity = dot_product / (norm_a * norm_b)
+            else:
+                cosine_similarity = 0.0
+
+        # Plot matched peaks in green
+        matched_mz_a = mz_a[matched_indices_a]
+        matched_mz_b = mz_b[matched_indices_b]
+        add_stem_trace(fig, matched_mz_a, np.array(matched_intensities_a), 'green')
+        add_stem_trace(fig, matched_mz_b, -1 * np.array(matched_intensities_b), 'green')
+
+        # Remove matched peaks from original lists
+        unmatched_mz_a = np.delete(mz_a, matched_indices_a)
+        unmatched_i_a = np.delete(i_a, matched_indices_a)
+        unmatched_mz_b = np.delete(mz_b, matched_indices_b)
+        unmatched_i_b = np.delete(i_b, matched_indices_b)
+
+        # Plot unmatched peaks in blue (spectrum A) and red (spectrum B)
+        add_stem_trace(fig, unmatched_mz_a, unmatched_i_a, 'blue')
+        add_stem_trace(fig, unmatched_mz_b, unmatched_i_b, 'red')
+    else:
+        # If there's only one spectrum, plot everything in blue
+        add_stem_trace(fig, mz_a, i_a, 'blue')
+
+    # Adjust x-axis range if specified
     if mass_range:
         fig.update_xaxes(range=(mass_range[0]-50, mass_range[1]+50))
-    return fig
+
+    return fig, cosine_similarity
 
 @callback(
     Output("mirror-plot-input-a", "options"),
@@ -312,10 +356,10 @@ def update_plot(input_a, input_b, mass_range, n_clicks):
     spectrum_b = _get_processed_spectrum(database_id_b)
 
     # Create the mirror plot
-    fig = create_mirror_plot(spectrum_a, spectrum_b, mass_range)
+    fig, cos_sim = create_mirror_plot(spectrum_a, spectrum_b, mass_range)
 
     fig.update_layout(
-        title="Mirror Plot of Spectra",
+        title=f"Mirror Plot of Spectra, Estimated Similarity: {cos_sim:.2f}" if cos_sim else "Mirror Plot of Spectrum A",
         xaxis_title="m/z",
         yaxis_title="Intensity",
         showlegend=False,
