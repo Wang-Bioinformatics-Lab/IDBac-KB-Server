@@ -67,6 +67,7 @@ SPECTRA_DASHBOARD = html.Div([
                         multi=False
                     ),
                     # Mass Range
+                    html.Label("Mass Range (m/z):"),
                     dcc.RangeSlider(
                         id="mirror-plot-mass-range",
                         min=2_000,
@@ -75,6 +76,18 @@ SPECTRA_DASHBOARD = html.Div([
                         value=[3_000, 20_000],
                         marks=None,
                         tooltip={"placement": "bottom", "always_visible": True},
+                    ),
+                    html.Label("Bin Size:"),
+                    dcc.Dropdown(
+                        id='mirror-plot-bin-size',
+                        options=[
+                            {'label': '10 Da', 'value': 10},
+                            {'label': '5 Da', 'value': 5},
+                            {'label': '1 Da', 'value': 1},
+                        ],
+                        value=10,
+                        placeholder="Select Bin Size",
+                        style={'margin':'5px'},
                     ),
                     # Update Plot Button
                     dbc.Button("Update Plot", id="mirror-plot-update", n_clicks=0),
@@ -113,7 +126,7 @@ def layout(**kwargs):
                                 dcc.Store(id='data-store', storage_type='memory'),
     ])
 
-def _get_processed_spectrum(database_id:str)->dict:
+def _get_processed_spectrum(database_id:str, bin_width:int)->dict:
     """ Returns the processed spectrum for a given database_id.
 
     Args:
@@ -123,7 +136,6 @@ def _get_processed_spectrum(database_id:str)->dict:
         dict: The processed spectrum.
     """
     # Finding all the database files
-    bin_width = 10 # Fixed bin width of 10 for now
     if dev_mode:
         database_files = glob.glob(f"workflows/idbac_summarize_database/nf_output/{str(bin_width)}_da_bin/output_spectra_json/**/{database_id}.json")
     else:
@@ -333,10 +345,11 @@ def set_inputs_from_url(search, _):
     State("mirror-plot-input-a", "value"),
     State("mirror-plot-input-b", "value"),
     State("mirror-plot-mass-range", "value"),
+    State("mirror-plot-bin-size", "value"),
     Input("mirror-plot-update", "n_clicks"),
     prevent_initial_call=True,
 )
-def update_plot(input_a, input_b, mass_range, n_clicks):
+def update_plot(input_a, input_b, mass_range, bin_size, n_clicks):
     """ Updates the search input based on the selected search type.
     Args:
         input_a (str): The value of the first input.
@@ -352,8 +365,8 @@ def update_plot(input_a, input_b, mass_range, n_clicks):
 
 
     # Mirror plot of spectra with optional bottom plot
-    spectrum_a = _get_processed_spectrum(database_id_a)
-    spectrum_b = _get_processed_spectrum(database_id_b)
+    spectrum_a = _get_processed_spectrum(database_id_a, bin_size)
+    spectrum_b = _get_processed_spectrum(database_id_b, bin_size)
 
     # Create the mirror plot
     fig, cos_sim = create_mirror_plot(spectrum_a, spectrum_b, mass_range)
