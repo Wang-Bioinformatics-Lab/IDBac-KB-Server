@@ -13,7 +13,9 @@ import plotly.express as px
 from plotly.graph_objs import Scatter, Figure
 import glob
 
+import numba as nb
 import numpy as np
+
 from scipy.ndimage import uniform_filter1d
 import os
 
@@ -23,6 +25,7 @@ from dash import html, register_page
 
 from utils import convert_to_mzml
 import logging
+from typing import Tuple
 
 dev_mode = False
 if not os.path.isdir('/app'):
@@ -174,6 +177,169 @@ def get_id_from_name(strain_name:str, data:dict)->str:
         return candidates[0], "Multiple candidates found."
     return candidates[0], None
 
+@nb.njit
+def find_matches(ref_spec_mz: np.ndarray, qry_spec_mz: np.ndarray,
+                 tolerance: float, shift: float = 0.0) -> Tuple[np.ndarray, np.ndarray]:
+    """Find matching peaks between two spectra."""
+    matches_idx1 = np.empty(len(ref_spec_mz) * len(qry_spec_mz), dtype=np.int64)
+    matches_idx2 = np.empty_like(matches_idx1)
+    match_count = 0
+    lowest_idx = 0
+
+    for peak1_idx in range(len(ref_spec_mz)):
+        mz = ref_spec_mz[peak1_idx]
+        low_bound = mz - tolerance
+        high_bound = mz + tolerance
+
+        for peak2_idx in range(lowest_idx, len(qry_spec_mz)):
+            mz2 = qry_spec_mz[peak2_idx] - shift
+            if mz2 > high_bound:
+                break
+            if mz2 < low_bound:
+                lowest_idx = peak2_idx
+            else:
+                matches_idx1[match_count] = peak1_idx
+                matches_idx2[match_count] = peak2_idx
+                match_count += 1
+
+    return matches_idx1[:match_count], matches_idx2[:match_count]
+
+@nb.njit
+def collect_peak_pairs(ref_spec: np.ndarray, qry_spec: np.ndarray, min_matched_peak: int, sqrt_transform: bool,
+                       tolerance: float, shift: float = 0.0) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """Find and score matching peak pairs between spectra."""
+
+    if len(ref_spec) == 0 or len(qry_spec) == 0:
+        return np.zeros(0, dtype=np.int64), np.zeros(0, dtype=np.int64), np.zeros(0, dtype=np.float32)
+
+    # Exact matching
+    matches_idx1, matches_idx2 = find_matches(ref_spec[:, 0], qry_spec[:, 0], tolerance, 0.0)
+
+    # If shift is not 0, perform hybrid search
+    if abs(shift) > 1e-6:
+        matches_idx1_shift, matches_idx2_shift = find_matches(ref_spec[:, 0], qry_spec[:, 0], tolerance, shift)
+        matches_idx1 = np.concatenate((matches_idx1, matches_idx1_shift))
+        matches_idx2 = np.concatenate((matches_idx2, matches_idx2_shift))
+
+    if len(matches_idx1) < min_matched_peak:
+        return np.zeros(0, dtype=np.int64), np.zeros(0, dtype=np.int64), np.zeros(0, dtype=np.float32)
+
+    # Calculate scores for matches
+    if sqrt_transform:
+        scores = np.sqrt(ref_spec[matches_idx1, 1] * qry_spec[matches_idx2, 1]).astype(np.float32)
+    else:
+        scores = (ref_spec[matches_idx1, 1] * qry_spec[matches_idx2, 1]).astype(np.float32)
+
+    # Sort by score descending
+    sort_idx = np.argsort(-scores)
+    return matches_idx1[sort_idx], matches_idx2[sort_idx], scores[sort_idx]
+
+
+@nb.njit
+def score_matches(matches_idx1: np.ndarray, matches_idx2: np.ndarray,
+                  scores: np.ndarray, ref_spec: np.ndarray, qry_spec: np.ndarray,
+                  sqrt_transform: bool, penalty: float):
+    """Calculate final similarity score from matching peaks."""
+
+    # Use boolean arrays for tracking used peaks - initialized to False
+    used1 = np.zeros(len(ref_spec), dtype=nb.boolean)
+    used2 = np.zeros(len(qry_spec), dtype=nb.boolean)
+
+    total_score = 0.0
+    used_matches = 0
+
+    # Find best non-overlapping matches
+    for i in range(len(matches_idx1)):
+        idx1 = matches_idx1[i]
+        idx2 = matches_idx2[i]
+        if not used1[idx1] and not used2[idx2]:
+            total_score += scores[i]
+            used1[idx1] = True
+            used2[idx2] = True
+            used_matches += 1
+
+    if used_matches == 0:
+        return 0.0, 0
+
+    # # Sum intensities of matched peaks
+    # matched_intensities = np.zeros(used_matches, dtype=np.float32)
+
+    # new intensities of qry peaks, matched peaks are the same, others are penalized
+    new_qry_intensities = np.zeros(len(qry_spec), dtype=np.float32)
+
+    match_idx = 0
+    for i in range(len(qry_spec)):
+        if used2[i]:
+            # matched_intensities[match_idx] = qry_spec[i, 1]
+            new_qry_intensities[i] = qry_spec[i, 1]
+            match_idx += 1
+        else:
+            new_qry_intensities[i] = qry_spec[i, 1] * (1 - penalty)
+
+    if sqrt_transform:
+        norm1 = np.sqrt(np.sum(np.sqrt(ref_spec[:, 1] * ref_spec[:, 1])))
+        norm2 = np.sqrt(np.sum(np.sqrt(new_qry_intensities * new_qry_intensities)))
+    else:
+        norm1 = np.sqrt(np.sum(ref_spec[:, 1] * ref_spec[:, 1]))
+        norm2 = np.sqrt(np.sum(new_qry_intensities * new_qry_intensities))
+
+    if norm1 == 0.0 or norm2 == 0.0:
+        return 0.0, used_matches
+
+    score = total_score / (norm1 * norm2)
+
+    return min(float(score), 1.0), used_matches
+
+
+def cosine_similarity(qry_spec: np.ndarray, ref_spec: np.ndarray,
+                      tolerance: float = 0.1,
+                      min_matched_peak: int = 1,
+                      sqrt_transform: bool = True,
+                      penalty: float = 0.,
+                      shift: float = 0.0):
+    """
+    Calculate similarity between two spectra.
+
+    Parameters
+    ----------
+    qry_spec: np.ndarray
+        Query spectrum.
+    ref_spec: np.ndarray
+        Reference spectrum.
+    tolerance: float
+        Tolerance for m/z matching.
+    min_matched_peak: int
+        Minimum number of matched peaks.
+    sqrt_transform: bool
+        If True, use square root transformation.
+    penalty: float
+        Penalty for unmatched peaks. If set to 0, traditional cosine score; if set to 1, traditional reverse cosine score.
+    shift: float
+        Shift for m/z values. If not 0, hybrid search is performed. shift = prec_mz(qry) - prec_mz(ref)
+    """
+    tolerance = np.float32(tolerance)
+    penalty = np.float32(penalty)
+    shift = np.float32(shift)
+
+    if qry_spec.size == 0 or ref_spec.size == 0:
+        return (0.0, 0), np.array([]), np.array([])
+
+    # normalize the intensity
+    ref_spec[:, 1] /= np.max(ref_spec[:, 1])
+    qry_spec[:, 1] /= np.max(qry_spec[:, 1])
+
+    matches_idx1, matches_idx2, scores = collect_peak_pairs(
+        ref_spec, qry_spec, min_matched_peak, sqrt_transform,
+        tolerance, shift
+    )
+
+    if len(matches_idx1) == 0:
+        return (0.0, 0), np.array([]), np.array([])
+
+    return score_matches(
+        matches_idx1, matches_idx2, scores,
+        ref_spec, qry_spec, sqrt_transform, penalty
+    ), matches_idx2, matches_idx1   # Note this is reversed, this is correct based on return from collect_peak_pairs
 
 def create_mirror_plot(spectrum_a, spectrum_b=None, mass_range=None, mass_tolerance=0.1):
     """ Creates a mirror plot of two spectra using stem plots and computes cosine similarity.
@@ -213,55 +379,56 @@ def create_mirror_plot(spectrum_a, spectrum_b=None, mass_range=None, mass_tolera
     mz_a = np.array([x['mz'] for x in spectrum_a['peaks']])
     i_a = np.array([x['i'] for x in spectrum_a['peaks']])
     mz_a, i_a = filter_mass_range(mz_a, i_a, mass_range)
+    # Normalize intensities
+    if len(i_a) > 0:
+        i_a = i_a / np.max(i_a) * 100.0
+    spectrum_a = np.column_stack((mz_a, i_a))
 
-    cosine_similarity = None  # Default in case there's no second spectrum
+    cosine_score = None  # Default in case there's no second spectrum
 
     if spectrum_b:
         # Second spectrum (inverted intensities)
         mz_b = np.array([x['mz'] for x in spectrum_b['peaks']])
         i_b = np.array([x['i'] for x in spectrum_b['peaks']])
         mz_b, i_b = filter_mass_range(mz_b, i_b, mass_range)
+        # Normalize intensities
+        if len(i_b) > 0:
+            i_b = i_b / np.max(i_b) * 100.0
+        spectrum_b = np.column_stack((mz_b, i_b))
 
-        # Identify matching peaks within mass tolerance
-        matched_indices_a = []
-        matched_indices_b = []
-        matched_intensities_a = []
-        matched_intensities_b = []
+        (cosine_score, num_matched_peaks), used_peaks_a, used_peaks_b = cosine_similarity(
+            qry_spec=spectrum_a,
+            ref_spec=spectrum_b,
+            tolerance=mass_tolerance,
+            min_matched_peak=1,
+            sqrt_transform=False,
+            penalty=0.0
+        )
 
-        for idx_a, mz_val_a in enumerate(mz_a):
-            diffs = np.abs(mz_b - mz_val_a)
-            min_idx = np.argmin(diffs)
-            if diffs[min_idx] <= mass_tolerance:
-                matched_indices_a.append(idx_a)
-                matched_indices_b.append(min_idx)
-                matched_intensities_a.append(i_a[idx_a])
-                matched_intensities_b.append(i_b[min_idx])
+        if len(used_peaks_a)>0:
+            matched_mz_a = mz_a[used_peaks_a]   # Contains indices of matched peaks
+            matched_i_a = i_a[used_peaks_a]
+        else:
+            matched_mz_a = np.array([])
+            matched_i_a = np.array([])
 
-        # Compute cosine similarity if there are matches
-        if matched_intensities_a and matched_intensities_b:
-            vec_a = np.array(matched_intensities_a)
-            vec_b = np.array(matched_intensities_b)
+        if len(used_peaks_b)>0:
+            matched_mz_b = mz_b[used_peaks_b]
+            matched_i_b = i_b[used_peaks_b]
+        else:
+            matched_mz_b = np.array([])
+            matched_i_b = np.array([])
 
-            dot_product = np.dot(vec_a, vec_b)
-            norm_a = np.linalg.norm(vec_a)
-            norm_b = np.linalg.norm(vec_b)
+        unmatched_mz_a = mz_a[np.setdiff1d(np.arange(len(mz_a)), used_peaks_a)]
+        unmatched_i_a = i_a[np.setdiff1d(np.arange(len(i_a)), used_peaks_a)]
+        unmatched_mz_b = mz_b[np.setdiff1d(np.arange(len(mz_b)), used_peaks_b)]
+        unmatched_i_b = i_b[np.setdiff1d(np.arange(len(i_b)), used_peaks_b)]
 
-            if norm_a > 0 and norm_b > 0:
-                cosine_similarity = dot_product / (norm_a * norm_b)
-            else:
-                cosine_similarity = 0.0
+        print(used_peaks_a)
 
         # Plot matched peaks in green
-        matched_mz_a = mz_a[matched_indices_a]
-        matched_mz_b = mz_b[matched_indices_b]
-        add_stem_trace(fig, matched_mz_a, np.array(matched_intensities_a), 'green')
-        add_stem_trace(fig, matched_mz_b, -1 * np.array(matched_intensities_b), 'green')
-
-        # Remove matched peaks from original lists
-        unmatched_mz_a = np.delete(mz_a, matched_indices_a)
-        unmatched_i_a = np.delete(i_a, matched_indices_a)
-        unmatched_mz_b = np.delete(mz_b, matched_indices_b)
-        unmatched_i_b = np.delete(i_b, matched_indices_b)
+        add_stem_trace(fig, matched_mz_a, matched_i_a, 'green')
+        add_stem_trace(fig, matched_mz_b, -1 * matched_i_b, 'green')
 
         # Plot unmatched peaks in blue (spectrum A) and red (spectrum B)
         add_stem_trace(fig, unmatched_mz_a, unmatched_i_a, 'blue')
@@ -274,7 +441,7 @@ def create_mirror_plot(spectrum_a, spectrum_b=None, mass_range=None, mass_tolera
     if mass_range:
         fig.update_xaxes(range=(mass_range[0]-50, mass_range[1]+50))
 
-    return fig, cosine_similarity
+    return fig, cosine_score
 
 @callback(
     Output("mirror-plot-input-a", "options"),
@@ -372,7 +539,7 @@ def update_plot(input_a, input_b, mass_range, bin_size, n_clicks):
     fig, cos_sim = create_mirror_plot(spectrum_a, spectrum_b, mass_range)
 
     fig.update_layout(
-        title=f"Mirror Plot of Spectra, Estimated Similarity: {cos_sim:.2f}" if cos_sim else "Mirror Plot of Spectrum A",
+        title=f"Mirror Plot of Spectra, Cosine Similarity: {cos_sim:.2f}" if cos_sim else "Mirror Plot of Spectrum A",
         xaxis_title="m/z",
         yaxis_title="Intensity",
         showlegend=False,
