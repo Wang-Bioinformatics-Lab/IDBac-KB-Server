@@ -11,6 +11,9 @@ ENV PATH=$CONDA_DIR/bin:$PATH
 # Adding to bashrc
 RUN echo "export PATH=$CONDA_DIR:$PATH" >> ~/.bashrc
 
+# Set default Python version via Conda
+RUN mamba install -n base python=3.10
+
 # Install Java
 RUN apt-get update && \
     apt-get install -y openjdk-21-jdk && \
@@ -22,7 +25,9 @@ ENV NXF_VER=24.10.3
 RUN wget -qO- https://github.com/nextflow-io/nextflow/releases/download/v$NXF_VER/nextflow-$NXF_VER-dist | bash && chmod +x nextflow && mv nextflow /usr/local/bin
 
 COPY requirements.txt .
-RUN pip install -r requirements.txt
+COPY conda_env.yml .
+# Required of numba, but 
+RUN mamba env update -f conda_env.yml -n base 
 
 COPY . /app
 WORKDIR /app

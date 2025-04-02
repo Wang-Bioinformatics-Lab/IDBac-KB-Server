@@ -2,7 +2,7 @@ Flask==2.2.5
 gunicorn
 plotly==5.24.1
 pandas==2.2.3
-numpy==2.2.1
+numpy==2.1
 requests
 requests_cache
 tqdm
@@ -26,4 +26,3 @@ openpyxl
 psims
 scipy==1.15.0
 tenacity
-numba
