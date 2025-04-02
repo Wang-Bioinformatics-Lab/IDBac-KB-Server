@@ -265,7 +265,7 @@ def create_mirror_plot(spectrum_a, spectrum_b=None, mass_range=None, mass_tolera
 
         # Plot unmatched peaks in blue (spectrum A) and red (spectrum B)
         add_stem_trace(fig, unmatched_mz_a, unmatched_i_a, 'blue')
-        add_stem_trace(fig, unmatched_mz_b, unmatched_i_b, 'red')
+        add_stem_trace(fig, unmatched_mz_b, -1 * unmatched_i_b, 'red')
     else:
         # If there's only one spectrum, plot everything in blue
         add_stem_trace(fig, mz_a, i_a, 'blue')
