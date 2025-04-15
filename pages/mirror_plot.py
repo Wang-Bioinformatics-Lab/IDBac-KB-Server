@@ -379,6 +379,9 @@ def create_mirror_plot(spectrum_a, spectrum_b=None, mass_range=None, mass_tolera
     mz_a = np.array([x['mz'] for x in spectrum_a['peaks']])
     i_a = np.array([x['i'] for x in spectrum_a['peaks']])
     mz_a, i_a = filter_mass_range(mz_a, i_a, mass_range)
+    sorted_indices = np.argsort(mz_a)
+    mz_a = mz_a[sorted_indices]
+    i_a = i_a[sorted_indices]
     # Normalize intensities
     if len(i_a) > 0:
         i_a = i_a / np.max(i_a) * 100.0
@@ -391,6 +394,9 @@ def create_mirror_plot(spectrum_a, spectrum_b=None, mass_range=None, mass_tolera
         mz_b = np.array([x['mz'] for x in spectrum_b['peaks']])
         i_b = np.array([x['i'] for x in spectrum_b['peaks']])
         mz_b, i_b = filter_mass_range(mz_b, i_b, mass_range)
+        sorted_indices = np.argsort(mz_b)
+        mz_b = mz_b[sorted_indices]
+        i_b = i_b[sorted_indices]
         # Normalize intensities
         if len(i_b) > 0:
             i_b = i_b / np.max(i_b) * 100.0
