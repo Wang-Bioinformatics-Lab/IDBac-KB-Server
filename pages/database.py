@@ -9,6 +9,7 @@ import plotly
 import plotly.express as px
 import os
 import logging
+import traceback
 
 import pandas as pd
 
@@ -313,41 +314,48 @@ BODY = dbc.Container(
     Input('data-store', 'data'),
 )
 def update_hover_tiles(data):
-    df = pd.DataFrame(data)
-    df = df.loc[df['Culture Collection'].notna(), :]
-    df = df.loc[df['genus'].notna(), :]
-    culture_collections = df["Culture Collection"].unique()
-    tiles = []
-    for collection in culture_collections:
-        unique_genera = df.loc[df['Culture Collection'] == collection, 'genus'].unique()
-        if len(unique_genera) == 0:
-            continue
-        num_entries = len(df[df['Culture Collection'] == collection])
-        under_text = ""
-        if num_entries == 1:
-            under_text = "1 entry"
-        elif num_entries > 1:
-            under_text = f"{num_entries:,} entries"
-        tooltip_text = ', '.join(unique_genera)
-        tiles.append(
-            dbc.Col(
-                dbc.Card(
-                    [
-                        dbc.CardBody(
-                            [
-                                html.H5(collection),
-                                html.P(under_text),
-                                dbc.Tooltip(tooltip_text, target=f"tooltip-{collection}")
-                            ]
-                        )
-                    ],
-                    id=f"tooltip-{collection}"
-                ),
-                width=4  # Adjust the width to control the number of tiles per row
+    try:
+        df = pd.DataFrame(data)
+        df = df.loc[df['Culture Collection'].notna(), :]
+        df = df.loc[df['genus'].notna(), :]
+        culture_collections = df["Culture Collection"].unique()
+        tiles = []
+        for collection in culture_collections:
+            unique_genera = df.loc[df['Culture Collection'] == collection, 'genus'].unique()
+            if len(unique_genera) == 0:
+                continue
+            num_entries = len(df[df['Culture Collection'] == collection])
+            under_text = ""
+            if num_entries == 1:
+                under_text = "1 entry"
+            elif num_entries > 1:
+                under_text = f"{num_entries:,} entries"
+            tooltip_text = ', '.join(unique_genera)
+            tiles.append(
+                dbc.Col(
+                    dbc.Card(
+                        [
+                            dbc.CardBody(
+                                [
+                                    html.H5(collection),
+                                    html.P(under_text),
+                                    dbc.Tooltip(tooltip_text, target=f"tooltip-{collection}")
+                                ]
+                            )
+                        ],
+                        id=f"tooltip-{collection}"
+                    ),
+                    width=4  # Adjust the width to control the number of tiles per row
+                )
             )
-        )
-    return tiles
-
+        return tiles
+    except Exception as e:
+        # Show stack trace
+        logging.error("Error updating hover tiles", e)
+        # Full trace
+        traceback.print_exc()
+        return []
+    
 
 # Callback to update the second pie chart based on the dropdown value
 @callback(

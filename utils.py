@@ -301,9 +301,14 @@ def populate_taxonomies(spectra_list):
     else:
         ncbi_taxa = NCBITaxa(dbfile="/app/database/ete3_ncbi_taxa.sqlite", update=True)   # Initialize a database of NCBITaxa (Downloads all files over HTTP)
 
-    for spectra_entry in spectra_list:
-        ncbi_tax_id=""
-        taxonomy_dict={}
+    total_entries = len(spectra_list)
+    for i, spectra_entry in enumerate(spectra_list):
+        # Print progress every 10%
+        if total_entries > 0 and i % (total_entries // 10) == 0:
+            print(f"{(i / total_entries) * 100:.0f}% done", flush=True)
+
+        ncbi_tax_id = ""
+        taxonomy_dict = {}
         try:
             taxonomy_dict, ncbi_tax_id = get_taxonomy(spectra_entry, ncbi_taxa)
             # print("Taxonomy dict", taxonomy_dict, flush=True)
