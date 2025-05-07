@@ -38,7 +38,7 @@ def task_deposit_data(deposit_dict, collection_name):
 
     return "Done"
 
-@celery_instance.task(time_limit=40000)
+@celery_instance.task(time_limit=60*60*23) # 23 Hours
 def task_summarize_depositions():
     print("Summarize", file=sys.stderr, flush=True)
 
