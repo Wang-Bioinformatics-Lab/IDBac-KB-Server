@@ -10,6 +10,7 @@ import requests_cache
 import xmltodict
 from utils import populate_taxonomies, generate_tree
 from utils import calculate_checksum
+from time import time
 
 dev_mode = False
 if not os.path.isdir('/app'):
@@ -74,8 +75,10 @@ def task_summarize_depositions():
     spectra_list = new_spectra_list
 
     # Get the taxonomies from genbank, falling back to NCBI taxid
+    start_time = time()
     print("Populating taxonomies", file=sys.stderr, flush=True)
     spectra_list = populate_taxonomies(spectra_list)
+    print(f"Populating taxonomies took {time() - start_time/60:.2f} minutes", file=sys.stderr, flush=True)
 
     # Check that we successfully populated any taxonomy, if not, there was likely an error
     populated_some_species = False
