@@ -77,6 +77,19 @@ def task_summarize_depositions():
     print("Populating taxonomies", file=sys.stderr, flush=True)
     spectra_list = populate_taxonomies(spectra_list)
 
+    # Check that we successfully populated any taxonomy, if not, there was likely an error
+    populated_some_species = False
+    for entry in spectra_list:
+        _species = entry.get("species")
+        if _species is not None and len(_species) > 0:
+            populated_some_species = True
+            break
+
+    if not populated_some_species:
+        print("No species populated, requeuing task", file=sys.stderr, flush=True)
+        task_summarize_depositions.apply_async(countdown=2*60*60)   # Retry in 2 hours
+        return "No species populated, requeuing task"
+
     # Save the spectra list to a file
     print("Writing to json", file=sys.stderr, flush=True)
     with open("database/summary.json", "w") as f:
