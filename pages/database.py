@@ -23,6 +23,26 @@ register_page(
     path='/database'
 )
 
+MAINTENANCE_STATUS = dbc.Alert(
+    [
+        html.H5("Maintenance Status", className="alert-heading"),
+        html.P("The database is currently under maintenance and values may change. Anticipated completion is 5/12/2025 at 10:00 AM PST."),
+        html.P("If you have any questions, please contact us at nkrull@uic.edu."),
+    ],
+    color="warning",
+    dismissable=True,
+)
+
+STATUS_BANNER = dbc.Row(
+    [
+        dbc.Col(
+            MAINTENANCE_STATUS,
+            width=12,
+        )
+    ],
+    style={"marginTop": 30},
+)
+
 HOVERTILES = dbc.Card(
     [
         dbc.CardHeader(html.H5("Culture Collections")),
@@ -258,6 +278,7 @@ EXAMPLES_DASHBOARD = [
 BODY = dbc.Container(
     [
         dcc.Location(id='url', refresh=False),
+        STATUS_BANNER,
         dbc.Row([
             dbc.Col(
                 dbc.Card(HOVERTILES),
