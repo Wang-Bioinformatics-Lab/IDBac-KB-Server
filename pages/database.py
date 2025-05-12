@@ -26,7 +26,7 @@ register_page(
 MAINTENANCE_STATUS = dbc.Alert(
     [
         html.H5("Maintenance Status Update", className="alert-heading"),
-        html.P("The database is currently under maintenance and values may change. Anticipated completion is 5/12/2025 at 12:00 Noon PST."),
+        html.P("The database is currently under maintenance and values may change. Anticipated completion is 5/12/2025 at 15:00 PST."),
         html.P("If you have any questions, please contact us at nkrull@uic.edu."),
     ],
     color="warning",
