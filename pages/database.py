@@ -35,12 +35,12 @@ MAINTENANCE_STATUS = dbc.Alert(
 
 STATUS_BANNER = dbc.Row(
     [
-        dbc.Col(
-            MAINTENANCE_STATUS,
-            width=12,
-        )
+        # dbc.Col(
+        #     MAINTENANCE_STATUS,
+        #     width=12,
+        # )
     ],
-    style={"marginTop": 30},
+    # style={"marginTop": 30},
 )
 
 HOVERTILES = dbc.Card(
