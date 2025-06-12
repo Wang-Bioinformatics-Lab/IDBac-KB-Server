@@ -78,7 +78,7 @@ def task_summarize_depositions():
     start_time = time()
     print("Populating taxonomies", file=sys.stderr, flush=True)
     spectra_list = populate_taxonomies(spectra_list)
-    print(f"Populating taxonomies took {time() - start_time/60:.2f} minutes", file=sys.stderr, flush=True)
+    print(f"Populating taxonomies took {(time() - start_time)/60:.2f} minutes", file=sys.stderr, flush=True)
 
     # Check that we successfully populated any taxonomy, if not, there was likely an error
     populated_some_species = False
