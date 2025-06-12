@@ -11,6 +11,8 @@ import xmltodict
 from time import sleep
 import hashlib
 import os
+import traceback
+import sys
 from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
 
 dev_mode = False
@@ -45,7 +47,7 @@ def get_ncbi_taxid_from_genbank(genbank_accession:str)->int:
     # First check the nucleotide database
     nucleotide_url = f"https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=nucleotide&term={genbank_accession}&retmode=json"
     r = fetch_with_retry(nucleotide_url)
-    nucleotide_json = r.json()
+    nucleotide_json = r.json(strict=False)
     sleep(0.5)
     # print("nucleotide_json", nucleotide_json, flush=True)
 
@@ -56,7 +58,7 @@ def get_ncbi_taxid_from_genbank(genbank_accession:str)->int:
                 nucleotide_id = nucleotide_json["esearchresult"]["idlist"][0]
                 nucleotide_summary_url = f"https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esummary.fcgi?db=nucleotide&id={nucleotide_id}&retmode=json"
                 r = fetch_with_retry(nucleotide_summary_url)
-                nucleotide_summary_json = r.json()
+                nucleotide_summary_json = r.json(strict=False)
                 sleep(0.5)
 
                 if "result" in nucleotide_summary_json:
@@ -68,7 +70,7 @@ def get_ncbi_taxid_from_genbank(genbank_accession:str)->int:
     if nucleotide_taxid == "":
         assembly_url = f"https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=assembly&term={genbank_accession}&retmode=json"
         r = fetch_with_retry(assembly_url)
-        assembly_json = r.json()
+        assembly_json = r.json(strict=False)
         sleep(0.5)
 
         if "esearchresult" in assembly_json:
@@ -77,7 +79,7 @@ def get_ncbi_taxid_from_genbank(genbank_accession:str)->int:
                     assembly_id = assembly_json["esearchresult"]["idlist"][0]
                     assembly_summary_url = f"https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esummary.fcgi?db=assembly&id={assembly_id}&retmode=json"
                     r = fetch_with_retry(assembly_summary_url)
-                    assembly_summary_json = r.json()
+                    assembly_summary_json = r.json(strict=False)
                     sleep(0.5)
 
                     if "result" in assembly_summary_json:
@@ -329,9 +331,11 @@ def populate_taxonomies(spectra_list):
             if spectra_entry['NCBI taxid'] == "" or pd.isna(spectra_entry['NCBI taxid']):
                 if ncbi_tax_id != "":
                     spectra_entry['NCBI taxid'] = ncbi_tax_id
-        except Exception as e:
+        except Exception as _:
             print("Exception while populating taxonomies", flush=True)
-            print(e, flush=True)
+            print(f"Got NCBI taxid '{ncbi_tax_id}' and genbank accession '{spectra_entry.get('Genbank accession', 'Unknown')}'", flush=True)
+            # Print the traceback for debugging
+            traceback.print_exc(file=sys.stdout)
             continue
 
     return spectra_list
@@ -451,9 +455,6 @@ def convert_to_mzml(json_run:Path):
                         scan += 1
 
     return output_bytes
-        
-
-
 
 def calculate_checksum(file_path, algorithm='sha256', chunk_size=65536):
     """
@@ -474,3 +475,48 @@ def calculate_checksum(file_path, algorithm='sha256', chunk_size=65536):
             hash_function.update(chunk)
     
     return hash_function.hexdigest()
+
+def test_get_ncbi_taxid_from_genbank_1():
+    genbank_accession = "JAHOEO000000000"
+    taxid = get_ncbi_taxid_from_genbank(genbank_accession)
+    assert taxid == 165179, f"Expected taxid 165179, got {taxid}"
+
+def test_get_ncbi_taxid_from_genbank_2():
+    genbank_accession = "JAHONP000000000"
+    taxid = get_ncbi_taxid_from_genbank(genbank_accession)
+    assert taxid == 818, f"Expected taxid 818, got {taxid}"
+
+def test_get_ncbi_taxid_from_genbank_3():
+    genbank_accession = "MK168052"
+    taxid = get_ncbi_taxid_from_genbank(genbank_accession)
+    assert taxid == 1931, f"Expected taxid 1931, got {taxid}"
+
+def test_get_taxonomy_for_taxid_1():
+    taxid = 165179
+    genus = 'Segatella'
+    if dev_mode:
+        ncbi_taxa = NCBITaxa(dbfile="database/ete3_ncbi_taxa.sqlite", update=True)
+    else:
+        ncbi_taxa = NCBITaxa(dbfile="/app/database/ete3_ncbi_taxa.sqlite", update=True)
+    taxonomy_dict = get_taxonomy_dict_from_ncbi(taxid, ncbi_taxa)
+    assert taxonomy_dict['genus'] == genus, f"Expected genus '{genus}', got '{taxonomy_dict.get('genus')}'"
+
+def test_get_taxonomy_for_taxid_2():
+    taxid = 818
+    genus = 'Bacteroides'
+    if dev_mode:
+        ncbi_taxa = NCBITaxa(dbfile="database/ete3_ncbi_taxa.sqlite", update=True)
+    else:
+        ncbi_taxa = NCBITaxa(dbfile="/app/database/ete3_ncbi_taxa.sqlite", update=True)
+    taxonomy_dict = get_taxonomy_dict_from_ncbi(taxid, ncbi_taxa)
+    assert taxonomy_dict['genus'] == genus, f"Expected genus '{genus}', got '{taxonomy_dict.get('genus')}'"
+
+def test_get_taxonomy_for_taxid_3():
+    taxid = 1931
+    genus = 'Streptomyces'
+    if dev_mode:
+        ncbi_taxa = NCBITaxa(dbfile="database/ete3_ncbi_taxa.sqlite", update=True)
+    else:
+        ncbi_taxa = NCBITaxa(dbfile="/app/database/ete3_ncbi_taxa.sqlite", update=True)
+    taxonomy_dict = get_taxonomy_dict_from_ncbi(taxid, ncbi_taxa)
+    assert taxonomy_dict['genus'] == genus, f"Expected genus '{genus}', got '{taxonomy_dict.get('genus')}'"

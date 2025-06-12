@@ -2,6 +2,7 @@ channels:
   - conda-forge
 dependencies:
   - numba=0.61.0
+  - pytest
   - pip
   - pip:
     - -r file:requirements.txt
