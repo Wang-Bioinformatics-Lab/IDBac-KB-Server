@@ -13,6 +13,7 @@ import hashlib
 import os
 import traceback
 import sys
+import pytest
 from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
 
 dev_mode = False
@@ -21,9 +22,15 @@ if not os.path.isdir('/app'):
 
 # Define a retry decorator for requests
 @retry(
-    stop=stop_after_attempt(5),
+    stop=stop_after_attempt(7),
     wait=wait_exponential(multiplier=1, min=1, max=10),
-    retry=retry_if_exception_type((requests.exceptions.RequestException, requests.exceptions.ConnectTimeout)),
+    retry=retry_if_exception_type((
+        requests.exceptions.RequestException,
+        requests.exceptions.ConnectTimeout,
+        requests.exceptions.ConnectionError,
+        requests.exceptions.Timeout,
+        requests.exceptions.HTTPError,
+    )),
     reraise=True,
 )
 def fetch_with_retry(url):
@@ -264,7 +271,12 @@ def get_taxonomy(spectra_entry, ncbi_taxa):
 
     if genbank_accession != "" and genbank_accession != "None" and not pd.isna(genbank_accession):
         # Prefer genbank over NCBI taxid
-        ncbi_taxid = get_ncbi_taxid_from_genbank(genbank_accession)
+        try:
+            ncbi_taxid = get_ncbi_taxid_from_genbank(genbank_accession)
+        except Exception as _:
+            print("Exception while getting NCBI taxid for Genbank accession", genbank_accession, flush=True)
+            traceback.print_exc(file=sys.stdout)
+            pass
 
     if ncbi_taxid != "" and ncbi_taxid != "None" and not pd.isna(ncbi_taxid):
         # Use the given NCBI taxid as a fallback
@@ -274,7 +286,8 @@ def get_taxonomy(spectra_entry, ncbi_taxa):
 
         except Exception as e:
             print("Exception while getting taxonomy for NCBI taxid", ncbi_taxid, flush=True)
-            print(e, flush=True)
+            traceback.print_exc(file=sys.stdout)
+            pass
 
         if taxonomy_dict != {}:
             return taxonomy_dict, ncbi_taxid
@@ -478,18 +491,31 @@ def calculate_checksum(file_path, algorithm='sha256', chunk_size=65536):
 
 def test_get_ncbi_taxid_from_genbank_1():
     genbank_accession = "JAHOEO000000000"
-    taxid = get_ncbi_taxid_from_genbank(genbank_accession)
-    assert taxid == 165179, f"Expected taxid 165179, got {taxid}"
+    taxid = 165179
+    result = get_ncbi_taxid_from_genbank(genbank_accession)
+    assert result == taxid, f"Expected taxid {taxid}, got {result}"
 
 def test_get_ncbi_taxid_from_genbank_2():
     genbank_accession = "JAHONP000000000"
-    taxid = get_ncbi_taxid_from_genbank(genbank_accession)
-    assert taxid == 818, f"Expected taxid 818, got {taxid}"
+    taxid = 818
+    result = get_ncbi_taxid_from_genbank(genbank_accession)
+    assert result == taxid, f"Expected taxid {taxid}, got {result}"
 
 def test_get_ncbi_taxid_from_genbank_3():
     genbank_accession = "MK168052"
-    taxid = get_ncbi_taxid_from_genbank(genbank_accession)
-    assert taxid == 1931, f"Expected taxid 1931, got {taxid}"
+    taxid = 1931
+    result = get_ncbi_taxid_from_genbank(genbank_accession)
+    assert result == taxid, f"Expected taxid {taxid}, got {result}"
+
+def test_get_ncbi_taxid_from_genbank_4():
+    genbank_accession = "JAHOMJ000000000"
+    taxid = 1522
+    assert get_ncbi_taxid_from_genbank(genbank_accession) == taxid, f"Expected taxid {taxid}, got {get_ncbi_taxid_from_genbank(genbank_accession)}"
+
+def test_get_ncbi_taxid_from_genbank_5():
+    genbank_accession = "MN588238"
+    taxid = 76759
+    assert get_ncbi_taxid_from_genbank(genbank_accession) == taxid, f"Expected taxid {taxid}, got {get_ncbi_taxid_from_genbank(genbank_accession)}"
 
 def test_get_taxonomy_for_taxid_1():
     taxid = 165179
@@ -499,7 +525,7 @@ def test_get_taxonomy_for_taxid_1():
     else:
         ncbi_taxa = NCBITaxa(dbfile="/app/database/ete3_ncbi_taxa.sqlite", update=True)
     taxonomy_dict = get_taxonomy_dict_from_ncbi(taxid, ncbi_taxa)
-    assert taxonomy_dict['genus'] == genus, f"Expected genus '{genus}', got '{taxonomy_dict.get('genus')}'"
+    assert taxonomy_dict.get('genus', '')  == genus, f"Expected genus '{genus}', got '{taxonomy_dict.get('genus')}'"
 
 def test_get_taxonomy_for_taxid_2():
     taxid = 818
@@ -509,7 +535,7 @@ def test_get_taxonomy_for_taxid_2():
     else:
         ncbi_taxa = NCBITaxa(dbfile="/app/database/ete3_ncbi_taxa.sqlite", update=True)
     taxonomy_dict = get_taxonomy_dict_from_ncbi(taxid, ncbi_taxa)
-    assert taxonomy_dict['genus'] == genus, f"Expected genus '{genus}', got '{taxonomy_dict.get('genus')}'"
+    assert taxonomy_dict.get('genus', '')  == genus, f"Expected genus '{genus}', got '{taxonomy_dict.get('genus')}'"
 
 def test_get_taxonomy_for_taxid_3():
     taxid = 1931
@@ -519,4 +545,25 @@ def test_get_taxonomy_for_taxid_3():
     else:
         ncbi_taxa = NCBITaxa(dbfile="/app/database/ete3_ncbi_taxa.sqlite", update=True)
     taxonomy_dict = get_taxonomy_dict_from_ncbi(taxid, ncbi_taxa)
-    assert taxonomy_dict['genus'] == genus, f"Expected genus '{genus}', got '{taxonomy_dict.get('genus')}'"
+    assert taxonomy_dict.get('genus', '')  == genus, f"Expected genus '{genus}', got '{taxonomy_dict.get('genus')}'"
+
+@pytest.mark.skip(reason="This test is likely to fail, since the taxid is awaiting transfer to a new genus.")
+def test_get_taxonomy_for_taxid_4():
+    taxid = 1522
+    genus = 'Clostridium'
+    if dev_mode:
+        ncbi_taxa = NCBITaxa(dbfile="database/ete3_ncbi_taxa.sqlite", update=True)
+    else:
+        ncbi_taxa = NCBITaxa(dbfile="/app/database/ete3_ncbi_taxa.sqlite", update=True)
+    taxonomy_dict = get_taxonomy_dict_from_ncbi(taxid, ncbi_taxa)
+    assert taxonomy_dict.get('genus', '')  == genus, f"Expected genus '{genus}', got '{taxonomy_dict}'"
+
+def test_get_taxonomy_for_taxid_5():
+    taxid = 76759
+    genus = 'Pseudomonas'
+    if dev_mode:
+        ncbi_taxa = NCBITaxa(dbfile="database/ete3_ncbi_taxa.sqlite", update=True)
+    else:
+        ncbi_taxa = NCBITaxa(dbfile="/app/database/ete3_ncbi_taxa.sqlite", update=True)
+    taxonomy_dict = get_taxonomy_dict_from_ncbi(taxid, ncbi_taxa)
+    assert taxonomy_dict.get('genus', '') == genus, f"Expected genus '{genus}', got '{taxonomy_dict}'"
