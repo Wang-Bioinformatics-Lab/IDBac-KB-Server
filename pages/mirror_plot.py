@@ -23,7 +23,7 @@ import pandas as pd
 
 from dash import html, register_page 
 
-from utils import convert_to_mzml
+from utils import convert_to_mzml, fetch_with_retry
 import logging
 from typing import Tuple
 
@@ -43,6 +43,21 @@ PAGE_SIZE = 12
 SPECTRA_DASHBOARD = html.Div([
     dbc.CardHeader(html.H5("Processed Database Spectra")),
     dbc.CardBody([
+        html.H6("Add USI to Analysis", className="mb-3"),
+        dbc.InputGroup(
+            [
+                dcc.Input(
+                    id="mirror-plot-usi-input",
+                    type="text",
+                    placeholder="Enter USI (e.g., mzspec:GNPS2:TASK-00712d4c9c3849b7a5211851a46deefa-nf_output/merged/DFI.2.27.mzML:scan:1)",
+                    style={'width': '100%'}
+                ),
+                dbc.Button("Submit USI", id="mirror-plot-usi-submit", n_clicks=0, color="primary"),
+            ],
+            className="mb-3",
+            style={"display": "flex", "alignItems": "center"}
+        ),
+        html.H6("Select Data Identifiers to Compare", className="mb-3"),
         dbc.RadioItems(
             id="mirror-plot-search-type",
             options=[
@@ -92,6 +107,17 @@ SPECTRA_DASHBOARD = html.Div([
                         placeholder="Select Bin Size",
                         style={'margin':'5px'},
                     ),
+                    html.Label("Presence-Absence Mode:"),
+                    dcc.Dropdown(
+                        id="presence-absence",
+                        options=[
+                            {'label': 'Enabled', 'value': True},
+                            {'label': 'Disabled', 'value': False},
+                        ],
+                        value=False,
+                        placeholder="Select Presence-Absence Mode",
+                        style={'margin':'5px'},
+                    ),
                     # Update Plot Button
                     dbc.Button("Update Plot", id="mirror-plot-update", n_clicks=0),
 
@@ -129,6 +155,34 @@ def layout(**kwargs):
                                 dcc.Store(id='data-store', storage_type='memory'),
     ])
 
+def _get_spectrum_resolver(usi:str)->dict:
+    """ Returns the exact spectrum specified by the usi.
+    Args:
+        usi (str): The USI of the spectrum to fetch.
+    Returns:
+        dict: The spectrum in JSON format.
+    """
+
+    # Looks like this: https://metabolomics-usi.gnps2.org/json/?usi1=mzspec%3AGNPS2%3ATASK-ddd9cb3cf41f435ab66c06554836dc5e-gnps_network/specs_ms.mgf%3Ascan%3A714
+
+    r = fetch_with_retry(
+        f"https://metabolomics-usi.gnps2.org/json/?usi1={usi}",
+    )
+    r.raise_for_status()
+
+    j = r.json() # j['peaks] is a list of lists [[mz, intensity], ...]
+    if 'peaks' not in j:
+        logging.error(f"Failed to fetch spectrum for USI {usi}. Response: {j}")
+        return None
+    if len(j['peaks']) == 0:
+        return {}
+    
+    # Convert to dict with 'mz' and 'i' keys
+    spectrum = {
+        'peaks': [{'mz': peak[0], 'i': peak[1]} for peak in sorted(j['peaks'], key=lambda x: x[0])],
+    }
+    return spectrum
+
 def _get_processed_spectrum(database_id:str, bin_width:int)->dict:
     """ Returns the processed spectrum for a given database_id.
 
@@ -138,6 +192,11 @@ def _get_processed_spectrum(database_id:str, bin_width:int)->dict:
     Returns:
         dict: The processed spectrum.
     """
+
+    if str(database_id).startswith("mzspec"):
+        # This is a resolver string, use the spectrum resolver to get the peaks
+        return _get_spectrum_resolver(database_id)
+
     # Finding all the database files
     if dev_mode:
         database_files = glob.glob(f"workflows/idbac_summarize_database/nf_output/{str(bin_width)}_da_bin/output_spectra_json/**/{database_id}.json")
@@ -450,6 +509,49 @@ def create_mirror_plot(spectrum_a, spectrum_b=None, mass_range=None, mass_tolera
     return fig, cosine_score
 
 @callback(
+    Output("data-store", "data", allow_duplicate=True),
+    Input("mirror-plot-usi-submit", "n_clicks"),
+    State("mirror-plot-usi-input", "value"),
+    State("data-store", "data"),
+    prevent_initial_call=True,
+)
+def update_data_store(n_clicks, usi, data_store):
+    """ Updates the data store with the spectrum data from the USI input.
+
+    Args:
+        n_clicks (int): The number of clicks on the submit button.
+        usi (str): The USI of the spectrum to fetch.
+
+    Returns:
+        dict: The data store containing strain names and database IDs.
+    """
+    logging.info(f"Adding USI {usi} to data store.")
+    print(f"Adding USI {usi} to data store.", flush=True)
+    if not usi:
+        return dash.no_update
+
+    # Fetch the spectrum using the USI
+    spectrum = _get_spectrum_resolver(usi)
+    if not spectrum or 'peaks' not in spectrum or len(spectrum['peaks']) == 0:
+        return dash.no_update
+
+    # Add the usi to the store as an option
+    new_value =  {
+        "Strain name": usi,
+        "database_id": usi,
+    }
+
+    if data_store is None:
+        data_store = [new_value]
+    else:
+        data_store.append(new_value)
+
+    logging.info(f"Successfully added USI {usi} to data store.")
+    print(f"Successfully added USI {usi} to data store.", flush=True)
+
+    return data_store
+
+@callback(
     Output("mirror-plot-input-a", "options"),
     Output("mirror-plot-input-b", "options"),
     Input("mirror-plot-search-type", "value"),
@@ -461,7 +563,7 @@ def update_input_options(search_type, data):
 
     Args:
         search_type (str): The selected search type.
-        data (dict): The data store.
+        data (dict): The data store containing strain names and database IDs.
 
     Returns:
         list: The options for the input dropdowns.
@@ -519,10 +621,11 @@ def set_inputs_from_url(search, _):
     State("mirror-plot-input-b", "value"),
     State("mirror-plot-mass-range", "value"),
     State("mirror-plot-bin-size", "value"),
+    State("presence-absence", "value"),
     Input("mirror-plot-update", "n_clicks"),
     prevent_initial_call=True,
 )
-def update_plot(input_a, input_b, mass_range, bin_size, n_clicks):
+def update_plot(input_a, input_b, mass_range, bin_size, presence, n_clicks):
     """ Updates the search input based on the selected search type.
     Args:
         input_a (str): The value of the first input.
@@ -540,6 +643,16 @@ def update_plot(input_a, input_b, mass_range, bin_size, n_clicks):
     # Mirror plot of spectra with optional bottom plot
     spectrum_a = _get_processed_spectrum(database_id_a, bin_size)
     spectrum_b = _get_processed_spectrum(database_id_b, bin_size)
+
+    # If presence-absence set nonzero intensities to 1
+    if presence and spectrum_a is not None:
+        for peak in spectrum_a['peaks']:
+            if peak['i'] > 0:
+                peak['i'] = 1.0
+    if presence and spectrum_b is not None:
+        for peak in spectrum_b['peaks']:
+            if peak['i'] > 0:
+                peak['i'] = 1.0
 
     # Create the mirror plot
     fig, cos_sim = create_mirror_plot(spectrum_a, spectrum_b, mass_range)
