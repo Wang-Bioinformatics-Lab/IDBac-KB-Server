@@ -85,7 +85,7 @@ def layout(**kwargs):
 def _get_raw_spectrum(database_id:str)->dict:
     # Finding all the database files
     if database_id.lower().startswith("deleted-"):
-        database_files = glob.glob("database/deleted_depositions/**/{}.json".format(os.path.basename(database_id)))
+        database_files = glob.glob("database/deleted_depositions/**/{}.json".format(os.path.basename(database_id.replace("deleted-", ""))))
     else:
         database_files = glob.glob("database/depositions/**/{}.json".format(os.path.basename(database_id)))
 
