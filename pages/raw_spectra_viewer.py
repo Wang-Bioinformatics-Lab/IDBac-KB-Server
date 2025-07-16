@@ -2,6 +2,7 @@
 from dash import dcc
 from dash import html
 from dash import dash_table
+import sys
 from dash import callback
 from dash.dependencies import Input, Output, State
 import dash_bootstrap_components as dbc
@@ -84,15 +85,19 @@ def layout(**kwargs):
 
 def _get_raw_spectrum(database_id:str)->dict:
     # Finding all the database files
-    if database_id.lower().startswith("deleted-"):
-        database_files = glob.glob("database/deleted_depositions/**/{}.json".format(os.path.basename(database_id.lower().replace("deleted-", ""))))
+    if database_id.upper().startswith("DELETED-"):
+        query_path = "database/deleted_depositions/**/{}.json".format(os.path.basename(database_id.upper().replace("DELETED-", "")))
     else:
-        database_files = glob.glob("database/depositions/**/{}.json".format(os.path.basename(database_id)))
+        query_path = "database/depositions/**/{}.json".format(os.path.basename(database_id))
+
+    database_files = glob.glob(query_path)
 
     if len(database_files) == 0:
+        print("No files found for:", query_path, flush=True, file=sys.stderr)
         return "File not found", 404
     
     if len(database_files) > 1:
+        print("Multiple files found for:", query_path, flush=True, file=sys.stderr)
         return "Multiple files found", 500
     
 
