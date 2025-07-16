@@ -84,7 +84,10 @@ def layout(**kwargs):
 
 def _get_raw_spectrum(database_id:str)->dict:
     # Finding all the database files
-    database_files = glob.glob("database/depositions/**/{}.json".format(os.path.basename(database_id)))
+    if database_id.lower().startswith("deleted-"):
+        database_files = glob.glob("database/deleted_depositions/**/{}.json".format(os.path.basename(database_id)))
+    else:
+        database_files = glob.glob("database/depositions/**/{}.json".format(os.path.basename(database_id)))
 
     if len(database_files) == 0:
         return "File not found", 404
@@ -136,6 +139,8 @@ def update_raw_viewer(data_table, database_id, search):
 
     if database_id is None:
         database_id = data_table.iloc[0]["database_id"]
+
+    database_id = str(database_id).strip()
     
     # Create download links for each database id
     download_link = html.A(
@@ -160,8 +165,35 @@ def update_raw_viewer(data_table, database_id, search):
     fig.update_layout(
         height=200 * num_spectra,
         margin=dict(l=5, r=5, t=5, b=5),
-        xaxis_title='m/z',
-        yaxis_title='Intensity'
+    )
+    # Set x-axis title only using annotations
+    fig.update_layout(
+        annotations=[
+            dict(
+                text="m/z",
+                xref="paper",
+                yref="paper",
+                x=0.5,
+                y=-0.02,
+                showarrow=False,
+                font=dict(size=14, family="Arial"),
+                xanchor="center",
+                yanchor="middle"
+            ),
+            dict(
+                text="Intensity",
+                xref="paper",
+                yref="paper",
+                x=-0.10,
+                y=0.5,
+                showarrow=False,
+                font=dict(size=14, family="Arial"),
+                textangle=-90,
+                xanchor="center",
+                yanchor="middle"
+            )
+        ],
+        margin=dict(l=60, r=5, t=5, b=60),
     )
 
     children = [
