@@ -8,19 +8,67 @@ import json
 from requests_cache import Path
 from psims.mzml.writer import MzMLWriter
 import xmltodict
-from time import sleep
+from time import time, sleep
 import hashlib
 import os
 import traceback
 import sys
 import pytest
+import random
 from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
 
 dev_mode = False
 if not os.path.isdir('/app'):
     dev_mode =  True
 
-# Define a retry decorator for requests
+# Caching for HTTP requests
+if dev_mode:
+    CACHE_DIR = "./database/http_cache"
+else:
+    CACHE_DIR = "/app/database/http_cache"
+# Ensure the cache directory exists
+if not os.path.exists(CACHE_DIR):
+    os.makedirs(CACHE_DIR, exist_ok=True)
+EXPIRATION_SECONDS = 7 * 24 * 60 * 60  # One week
+JITTER = 0.2  # 20% jitter
+"""
+Summary of caching behavior:
+1. Use the cache if it's fresh.
+2. Attempt to re-fetch the content if the cache is stale or missing and cache fresh response to disk.
+3. Fallback to stale cache if re-fetching fails (e.g. due to network issues).
+"""
+
+def url_to_cache_path(url):
+    """Generate a filesystem-safe path for the URL."""
+    url_hash = hashlib.sha256(url.encode()).hexdigest()
+    return os.path.join(CACHE_DIR, f"{url_hash}.json")
+
+def is_expired(cache_entry):
+    """Check if the cache entry is expired."""
+    now = time()
+    return now > cache_entry.get("expires_at", 0)
+
+def load_cache(url):
+    path = url_to_cache_path(url)
+    if not os.path.exists(path):
+        return None
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            return json.load(f, strict=False)
+    except Exception:
+        return None
+
+def save_cache(url, content):
+    path = url_to_cache_path(url)
+    expires_at = time() + EXPIRATION_SECONDS * (1 + random.uniform(-JITTER, JITTER))
+    data = {
+        "url": url,
+        "expires_at": expires_at,
+        "content": content
+    }
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(data, f)
+
 @retry(
     stop=stop_after_attempt(7),
     wait=wait_exponential(multiplier=1, min=1, max=10),
@@ -35,8 +83,29 @@ if not os.path.isdir('/app'):
 )
 def fetch_with_retry(url):
     response = requests.get(url, timeout=10)
-    response.raise_for_status()  # Raise an error for non-2xx responses
-    return response
+    response.raise_for_status()
+    return response.text
+
+def cached_fetch(url):
+    cache = load_cache(url)
+    if cache and not is_expired(cache):
+        # print(f"Using cached content for {url}", flush=True)
+        return cache["content"]
+
+    try:
+        # print(f"Caching new content for {url}", flush=True)
+        content = fetch_with_retry(url)
+        save_cache(url, content)
+        return content
+    except Exception as _:
+        if cache:
+            # Only use expired cache if it's less than double the expiration timeout
+            now = time()
+            expires_at = cache.get("expires_at", 0)
+            if now < expires_at + EXPIRATION_SECONDS:
+                # print(f"Using expired cache for {url}", flush=True)
+                return cache["content"]
+        raise  # no fallback available
 
 def get_ncbi_taxid_from_genbank(genbank_accession:str)->int:
     """Gets the NCBI taxid from a genbank accession. Each genbank accession is
@@ -53,8 +122,8 @@ def get_ncbi_taxid_from_genbank(genbank_accession:str)->int:
 
     # First check the nucleotide database
     nucleotide_url = f"https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=nucleotide&term={genbank_accession}&retmode=json"
-    r = fetch_with_retry(nucleotide_url)
-    nucleotide_json = r.json(strict=False)
+    r = cached_fetch(nucleotide_url)
+    nucleotide_json = json.loads(r, strict=False)
     sleep(0.5)
     # print("nucleotide_json", nucleotide_json, flush=True)
 
@@ -64,10 +133,9 @@ def get_ncbi_taxid_from_genbank(genbank_accession:str)->int:
             if len(nucleotide_json["esearchresult"]["idlist"]) > 0:
                 nucleotide_id = nucleotide_json["esearchresult"]["idlist"][0]
                 nucleotide_summary_url = f"https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esummary.fcgi?db=nucleotide&id={nucleotide_id}&retmode=json"
-                r = fetch_with_retry(nucleotide_summary_url)
-                nucleotide_summary_json = r.json(strict=False)
+                r = cached_fetch(nucleotide_summary_url)
+                nucleotide_summary_json = json.loads(r, strict=False)
                 sleep(0.5)
-
                 if "result" in nucleotide_summary_json:
                     if nucleotide_id in nucleotide_summary_json["result"]:
                         if "taxid" in nucleotide_summary_json["result"][nucleotide_id]:
@@ -76,8 +144,8 @@ def get_ncbi_taxid_from_genbank(genbank_accession:str)->int:
     # If not found in nucleotide, check the assembly database
     if nucleotide_taxid == "":
         assembly_url = f"https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=assembly&term={genbank_accession}&retmode=json"
-        r = fetch_with_retry(assembly_url)
-        assembly_json = r.json(strict=False)
+        r = cached_fetch(assembly_url)
+        assembly_json = json.loads(r, strict=False)
         sleep(0.5)
 
         if "esearchresult" in assembly_json:
@@ -85,8 +153,8 @@ def get_ncbi_taxid_from_genbank(genbank_accession:str)->int:
                 if len(assembly_json["esearchresult"]["idlist"]) > 0:
                     assembly_id = assembly_json["esearchresult"]["idlist"][0]
                     assembly_summary_url = f"https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esummary.fcgi?db=assembly&id={assembly_id}&retmode=json"
-                    r = fetch_with_retry(assembly_summary_url)
-                    assembly_summary_json = r.json(strict=False)
+                    r = cached_fetch(assembly_summary_url)
+                    assembly_summary_json = json.loads(r, strict=False)
                     sleep(0.5)
 
                     if "result" in assembly_summary_json:
