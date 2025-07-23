@@ -96,6 +96,7 @@ def cached_fetch(url):
         # print(f"Caching new content for {url}", flush=True)
         content = fetch_with_retry(url)
         save_cache(url, content)
+        sleep(0.7)
         return content
     except Exception as _:
         if cache:
@@ -124,7 +125,6 @@ def get_ncbi_taxid_from_genbank(genbank_accession:str)->int:
     nucleotide_url = f"https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=nucleotide&term={genbank_accession}&retmode=json"
     r = cached_fetch(nucleotide_url)
     nucleotide_json = json.loads(r, strict=False)
-    sleep(0.5)
     # print("nucleotide_json", nucleotide_json, flush=True)
 
     nucleotide_taxid = ""
@@ -135,7 +135,6 @@ def get_ncbi_taxid_from_genbank(genbank_accession:str)->int:
                 nucleotide_summary_url = f"https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esummary.fcgi?db=nucleotide&id={nucleotide_id}&retmode=json"
                 r = cached_fetch(nucleotide_summary_url)
                 nucleotide_summary_json = json.loads(r, strict=False)
-                sleep(0.5)
                 if "result" in nucleotide_summary_json:
                     if nucleotide_id in nucleotide_summary_json["result"]:
                         if "taxid" in nucleotide_summary_json["result"][nucleotide_id]:
@@ -146,7 +145,6 @@ def get_ncbi_taxid_from_genbank(genbank_accession:str)->int:
         assembly_url = f"https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=assembly&term={genbank_accession}&retmode=json"
         r = cached_fetch(assembly_url)
         assembly_json = json.loads(r, strict=False)
-        sleep(0.5)
 
         if "esearchresult" in assembly_json:
             if "idlist" in assembly_json["esearchresult"]:
@@ -155,7 +153,6 @@ def get_ncbi_taxid_from_genbank(genbank_accession:str)->int:
                     assembly_summary_url = f"https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esummary.fcgi?db=assembly&id={assembly_id}&retmode=json"
                     r = cached_fetch(assembly_summary_url)
                     assembly_summary_json = json.loads(r, strict=False)
-                    sleep(0.5)
 
                     if "result" in assembly_summary_json:
                         if assembly_id in assembly_summary_json["result"]:
@@ -396,7 +393,6 @@ def populate_taxonomies(spectra_list):
             taxonomy_dict, ncbi_tax_id = get_taxonomy(spectra_entry, ncbi_taxa)
             # print("Taxonomy dict", taxonomy_dict, flush=True)
             # print("NCBI Taxid", ncbi_tax_id, flush=True)
-            sleep(0.2)
 
             # Check if any of the keys conflict, if so remove it and log it
             for key in taxonomy_dict:
