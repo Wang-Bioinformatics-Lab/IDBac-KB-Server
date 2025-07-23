@@ -100,12 +100,8 @@ def cached_fetch(url):
         return content
     except Exception as _:
         if cache:
-            # Only use expired cache if it's less than double the expiration timeout
-            now = time()
-            expires_at = cache.get("expires_at", 0)
-            if now < expires_at + EXPIRATION_SECONDS:
-                # print(f"Using expired cache for {url}", flush=True)
-                return cache["content"]
+            # Fallback to stale cache if available
+            return cache["content"]
         raise  # no fallback available
 
 def get_ncbi_taxid_from_genbank(genbank_accession:str)->int:
