@@ -313,22 +313,6 @@ BODY = dbc.Container(
     className="",
 )
 
-# Load the database once and send to dcc.store on page load
-# @callback(
-#     Output('data-store', 'data'),
-#     Input('url', 'pathname'),
-# )
-# def load_database(pathname):
-#     if not os.path.exists("database/summary.tsv"):
-#         return None
-    
-#     try:
-#         df = pd.read_csv("database/summary.tsv", sep="\t")
-#         return df.to_dict(orient='records')
-#     except Exception as e:
-#         logging.error("Error loading database", e)
-#         return None
-
 # Callback to update the hover tiles based on DB contents
 @callback(
     Output('tiles-container', 'children'),
@@ -338,7 +322,11 @@ def update_hover_tiles(data):
     try:
         df = pd.DataFrame(data)
         df = df.loc[df['Culture Collection'].notna(), :]
+        df['16S Genus'] = df['16S Taxonomy'].str.split().str[0].str.strip()
+        df['genus'] = df['genus'].fillna(df['16S Genus'])
         df = df.loc[df['genus'].notna(), :]
+        # Ensure capitalization is consistent
+        df['Culture Collection'] = df['Culture Collection'].str.strip().str.title()
         culture_collections = df["Culture Collection"].unique()
         tiles = []
         for collection in culture_collections:
@@ -372,7 +360,7 @@ def update_hover_tiles(data):
         return tiles
     except Exception as e:
         # Show stack trace
-        logging.error("Error updating hover tiles", e)
+        logging.error(f"Error updating hover tiles: {e}")
         # Full trace
         traceback.print_exc()
         return []
@@ -388,6 +376,7 @@ def update_dynamic_pie_chart(selected_taxonomy, data):
     dynamic_summary_df = None
     count_16S = 0
     number_of_database_entries = ""
+    percent_16S = 0.0
     if data is not None:
         dynamic_summary_df = pd.DataFrame(data)
 
