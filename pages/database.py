@@ -326,8 +326,8 @@ def update_hover_tiles(data):
         df['genus'] = df['genus'].fillna(df['16S Genus'])
         df = df.loc[df['genus'].notna(), :]
         # Ensure capitalization is consistent
-        df['Culture Collection'] = df['Culture Collection'].str.strip().str.title()
-        culture_collections = df["Culture Collection"].unique()
+        df['genus'] = df['genus'].str.strip().str.title()
+        culture_collections = df["Culture Collection"].value_counts().index.tolist()
         tiles = []
         for collection in culture_collections:
             unique_genera = df.loc[df['Culture Collection'] == collection, 'genus'].unique()
