@@ -51,7 +51,7 @@ process generate_json {
     input:
     file idbac_full_spectra_json // Original database with metadata
     file idbac_ml_vectors        // ML vectors from inference
-
+    
     output:
     file 'idbac_ml_db.json'
 

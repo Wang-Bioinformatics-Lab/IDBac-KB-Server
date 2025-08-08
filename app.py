@@ -475,15 +475,15 @@ def filtered_spectra():
     return send_from_directory(os.path.dirname(database_files[0]), os.path.basename(database_files[0]))
 
 @server.route("/api/spectrum/ml_db", methods=["GET"])
-def ml_db():
+def ml_db():    # http://localhost:5392/api/spectrum/ml_db
     # Getting a single spectrum
     database_id = request.values.get("database_id", 'ALL')
 
     if database_id == "ALL":
         if dev_mode:
-            return send_from_directory("workflows/idbac_summarize_database/nf_output/ml_db/", "ml_db.json")
+            return send_from_directory("workflows/idbac_summarize_database/nf_output/ml_db/", "idbac_ml_db.json")
         else:
-            return send_from_directory("/app/workflows/idbac_summarize_database/nf_output/ml_db/", "ml_db.json")
+            return send_from_directory("/app/workflows/idbac_summarize_database/nf_output/ml_db/", "idbac_ml_db.json")
         
     else:
         # Return an error if the database_id is not "ALL"
