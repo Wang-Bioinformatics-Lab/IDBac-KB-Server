@@ -10,6 +10,8 @@ include { MergeAndOutput as MergeAndOutput1 } from "$baseDir/bin/processes.nf" a
 include { MergeAndOutput as MergeAndOutput5 } from "$baseDir/bin/processes.nf" addParams(output_dir: "./nf_output/5_da_bin")
 include { MergeAndOutput as MergeAndOutput10 } from "$baseDir/bin/processes.nf" addParams(output_dir: "./nf_output/10_da_bin")
 
+include { MLInferenceWorkflow as MLInferenceWorkflow } from "$baseDir/ml_inference/ml_inference.nf"  addParams(output_dir: "./nf_output/ml_db")
+
 process formatDatabase {
     publishDir "./nf_output", mode: 'copy'
 
@@ -133,4 +135,6 @@ workflow {
                         10,
                         // "./nf_output/10_da_bin"
                     )
+
+    MLInferenceWorkflow(    output_idbac_database_ch)
 }
