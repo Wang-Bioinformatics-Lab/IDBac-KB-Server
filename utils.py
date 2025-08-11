@@ -443,6 +443,17 @@ def generate_tree(taxid_list):
     else:
         ncbi = NCBITaxa(dbfile="/app/database/ete3_ncbi_taxa.sqlite")
 
+    # Make taxid_list safe by removing anything ete3 can't find
+    _taxid_list = []
+    for taxid in taxid_list:
+        try:
+            ncbi.get_lineage(taxid)
+            _taxid_list.append(taxid)
+        except Exception as e:
+            print(f"TaxID {taxid} not found in NCBI database. Skipping.", file=sys.stderr, flush=True)
+            print(e, file=sys.stderr, flush=True)
+    taxid_list = _taxid_list
+
     # Fetch the tree topology based on these taxids
     tree = ncbi.get_topology(taxid_list)
 
