@@ -16,6 +16,14 @@ import pandas as pd
 from dash import html, register_page  #, callback # If you need callbacks, import it here.
 
 
+PLOTLY_EXPORT_CONFIG = config = {
+  'toImageButtonOptions': {
+    'format': 'png', # one of png, svg, jpeg, webp
+    'filename': 'IDBac',
+    'scale': 5 
+  }
+}
+
 register_page(
     __name__,
     name='IDBac Database',
@@ -217,7 +225,7 @@ DATABASE_CONTENTS = [
             ),
             
             # pie chart (dynamic, controlled by dropdown)
-            dcc.Graph(id="dynamic-taxonomy-pie-chart"),   # DISABLED FOR DEBUG TODO REMOVE
+            dcc.Graph(id="dynamic-taxonomy-pie-chart", config=PLOTLY_EXPORT_CONFIG),
             # Horizontal line
             html.Hr() if tax_tree else None,
             # Taxonomic tree
