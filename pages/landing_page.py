@@ -49,7 +49,7 @@ def update_database_contents(_,):
     except Exception as _:
         return ""
     
-    return f"Collective Contributions: {num_entries:,} Entries & {num_genera:,} genera"
+    return f"Collective Contributions: {num_entries:,} Entries & {num_genera:,} Genera"
 
 
 BUTTONS = dbc.Col(
@@ -76,7 +76,7 @@ BUTTONS = dbc.Col(
             dbc.Col(
                 [
                     dbc.Button(
-                        "View Database", color="primary", className="m-2 button-fixed button-grey", href="/database"
+                        "View Database", color="primary", className="m-2 button-fixed button-grey", href="/knowledgebase"
                     ), 
                     html.P(text_under_button3, className="grey-box"),
                 ],

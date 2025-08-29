@@ -28,7 +28,7 @@ register_page(
     __name__,
     name='IDBac Database',
     top_nav=True,
-    path='/database'
+    path='/knowledgebase'
 )
 
 MAINTENANCE_STATUS = dbc.Alert(
@@ -51,25 +51,8 @@ STATUS_BANNER = dbc.Row(
     # style={"marginTop": 30},
 )
 
-HOVERTILES = dbc.Card(
-    [
-        dbc.CardHeader(html.H5("Culture Collections")),
-        dbc.CardBody(
-            [
-                html.H3(
-                    id="database-contents-text",
-                    style={"color": "#d88000", "marginBottom": "20px"},  # You can change the color here
-                    className="text-center"
-                ),
-                dbc.Row(id="tiles-container", className="g-2"),
-            ]
-        )
-    ]
-)
-
-
 DATASELECTION_CARD = [
-    dbc.CardHeader(html.H5("IDBac KB Spectra List")),
+    dbc.CardHeader(html.H5("IDBac-KB Spectra List")),
     dbc.CardBody(
         [   
             html.Div([
@@ -186,11 +169,30 @@ try:
     if not os.path.exists("/app/assets/tree.png"):
         raise FileNotFoundError()
     tax_tree = html.Div(
-                [
-                    html.H5("Taxonomic Tree"),
-                    html.Img(src="/download_tree_png", style={"width": "75%", 'margin':'auto', 'display':'flex'}),
-                ]
-            )
+        [
+            html.H5(
+                "Taxonomic Tree",
+                style={"color": "#2a3f5f", "fontSize": "1.1rem", "textAlign": "center"}
+            ),
+            html.Img(
+                src="/download_tree_png",
+                style={
+                    "width": "75%",      # relative to column width
+                    "maxWidth": "612px", # never bigger than 612px
+                    "height": "auto",    # keep aspect ratio
+                    "margin": "0 auto",
+                    "display": "block"
+                }
+            ),
+        ],
+        style={
+            "display": "flex",
+            "flexDirection": "column",
+            "alignItems": "center",
+            "justifyContent": "flex-start",  # heading pinned at top
+            "height": "100%"
+        }
+    )
 except Exception as e:
     print("Error loading taxonomic tree", e)
     tax_tree = None
@@ -213,28 +215,89 @@ TREE_DOWNLOAD_BUTTONS = dbc.Row(
 
 # Count of Spectra, Bar Chart of Taxonomy
 DATABASE_CONTENTS = [
-    dbc.CardHeader(html.H5("Database Contents")),
+    dbc.CardHeader(html.H5("Knowledgebase Contents")),
     dbc.CardBody(
         [
-            # Dropdown for the  pie chart
-            dcc.Dropdown(
-                id='taxonomy-dropdown',
-                options=db_content_dropdown_options,
-                value='genus',  # default value
-                clearable=False
+            # Top heading
+            html.H3(
+                id="database-contents-text",
+                style={"color": "#d88000", "marginBottom": "20px"},
+                className="text-center"
             ),
-            
-            # pie chart (dynamic, controlled by dropdown)
-            dcc.Graph(id="dynamic-taxonomy-pie-chart", config=PLOTLY_EXPORT_CONFIG),
-            # Horizontal line
-            html.Hr() if tax_tree else None,
-            # Taxonomic tree
-            tax_tree,
-            # Download buttons
-            TREE_DOWNLOAD_BUTTONS if tax_tree else None
+
+            # Row with pie chart and taxonomic tree
+            dbc.Row(
+                [
+                    # Left column: pie chart + dropdown
+                    dbc.Col(
+                        [
+                            dcc.Graph(
+                                id="dynamic-taxonomy-pie-chart",
+                                config=PLOTLY_EXPORT_CONFIG,
+                                style={"height": "650px"}  # fixed height keeps annotation stable
+                            ),
+                            html.Div(
+                                dcc.Dropdown(
+                                    id='taxonomy-dropdown',
+                                    options=db_content_dropdown_options,
+                                    value='genus',
+                                    clearable=False,
+                                    className="mb-3",
+                                    style={"width": "60%"}
+                                ),
+                                style={"display": "flex", "justifyContent": "center"}
+                            ),
+                        ],
+                        xs=12, md=6,  # stack on mobile, side-by-side on medium+
+                        className="d-flex flex-column"
+                    ),
+
+                    # Right column: taxonomic tree + heading + buttons
+                    dbc.Col(
+                        [
+                            html.Div(
+                                [
+                                    html.H5(
+                                        "Taxonomic Tree",
+                                        style={"color": "#2a3f5f", "fontSize": "1.1rem", "textAlign": "center", "marginTop": "10px"}
+                                    ),
+                                    html.Img(
+                                        src="/download_tree_png",
+                                        style={
+                                            "width": "75%",
+                                            "maxWidth": "612px",
+                                            "height": "auto",
+                                            "margin": "0 auto",
+                                            "display": "block"
+                                        }
+                                    ),
+                                    TREE_DOWNLOAD_BUTTONS if tax_tree else None
+                                ],
+                                style={
+                                    "display": "flex",
+                                    "flexDirection": "column",
+                                    "alignItems": "center",
+                                    "justifyContent": "flex-start",  # heading pinned at top
+                                    "height": "100%"
+                                }
+                            )
+                        ],
+                        xs=12, md=6,
+                        className="d-flex flex-column",
+                        style={
+                            "borderLeft": "2px solid #ccc",
+                            "borderLeftWidth": "2px",
+                            "borderLeftStyle": "solid",
+                            "borderLeftColor": "#ccc"
+                        }
+                    ),
+                ],
+                align="start"  # align columns at top
+            ),
         ]
     )
 ]
+
 
 ADDITIONAL_DATA = [
     dbc.CardHeader(html.H5("Additional Data")),
@@ -289,15 +352,16 @@ BODY = dbc.Container(
         STATUS_BANNER,
         dbc.Row([
             dbc.Col(
-                dbc.Card(HOVERTILES),
                 className="w-100"
             ),
         ],
         style={"marginTop": 30}),
         dbc.Row([
-            dbc.Col(
+            dbc.Col([
+                dbc.Card(DATABASE_CONTENTS),
                 dbc.Card(DB_DISPLAY_DASHBOARD),
-                className="w-100"
+            ],
+            className="w-100"
             ),
         ], style={"marginTop": 30}),
         dbc.Row([
@@ -310,8 +374,7 @@ BODY = dbc.Container(
             ),
             dbc.Col(
                 [
-                    dbc.Card(DATABASE_CONTENTS),
-                    dbc.Card(CONTRIBUTORS_DASHBOARD, style={"marginTop": 30}),
+                    dbc.Card(CONTRIBUTORS_DASHBOARD),
                 ],
                 className="w-50"
             ),
@@ -396,20 +459,12 @@ def update_dynamic_pie_chart(selected_taxonomy, data):
         # Strip the column of whitespace
         dynamic_summary_df[selected_taxonomy] = dynamic_summary_df[selected_taxonomy].str.strip()
 
-        # Print full dataframe for DEBUG
-        # with pd.option_context('display.max_rows', None, 'display.max_columns', None):  
-        #     print(dynamic_summary_df, flush=True)
-
         # If genus, only take the first word
         if selected_taxonomy == "genus":
             dynamic_summary_df.loc[is_16S, selected_taxonomy] = dynamic_summary_df.loc[is_16S, "16S Taxonomy"]
             dynamic_summary_df.loc[dynamic_summary_df["genus"]!="No Taxonomy", "genus"] = dynamic_summary_df.loc[dynamic_summary_df["genus"]!="No Taxonomy", "genus"].str.split().str[0]
         else:
             dynamic_summary_df.loc[is_16S, selected_taxonomy] = "User Submitted 16S"
-
-        # Print full dataframe for DEBUG
-        # with pd.option_context('display.max_rows', None, 'display.max_columns', None):  
-        #     print(dynamic_summary_df[selected_taxonomy].value_counts(), flush=True)
 
         # Get counts by Genus and Species for px.bar
         dynamic_summary_df = dynamic_summary_df.groupby([selected_taxonomy]).size().reset_index(name="count")
@@ -428,6 +483,18 @@ def update_dynamic_pie_chart(selected_taxonomy, data):
                  title=f"Taxonomy Distribution by {selected_taxonomy}",
                 ).update_traces(textposition='inside').update_layout(uniformtext_minsize=12, uniformtext_mode='hide')
     
+    fig.update_traces(
+        domain=dict(x=[0, 1], y=[0.1, 0.9])  # move pie down slightly
+    )
+
+    fig.update_layout(
+        uniformtext_minsize=12,
+        uniformtext_mode='hide',
+        margin=dict(t=60, b=10, l=20, r=20),  # less padding around
+        height=600,                            # force larger chart
+    )
+
+
     print("count_16S", count_16S, flush=True)
     if count_16S > 0:
         fig.add_annotation(
