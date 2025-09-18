@@ -67,8 +67,17 @@ DATASELECTION_CARD = [
                     filter_action='native',
                     export_format='xlsx',
                     export_headers='display',
+                    filter_options={'case': 'insensitive',
+                                    'placeholder_text': 'Filter table...'},
                     style_header={
+                        'backgroundColor': "#e9e9e9",
+                        'color': '#3a3a3a',
                         'whiteSpace': 'normal',
+                        },
+                    style_filter={
+                            'backgroundColor': '#e9e9e9',
+                            'color': '#3a3a3a',
+                            'fontStyle': 'italic',
                         },
                     style_table={
                         'width': '100%',
@@ -89,7 +98,7 @@ DATASELECTION_CARD = [
 DB_DISPLAY_DASHBOARD = [
     html.Div(
         [
-            html.Div(DATASELECTION_CARD),
+            html.Div(DATASELECTION_CARD, ),
         ]
     )
 ]
@@ -359,7 +368,7 @@ BODY = dbc.Container(
         dbc.Row([
             dbc.Col([
                 dbc.Card(DATABASE_CONTENTS),
-                dbc.Card(DB_DISPLAY_DASHBOARD),
+                dbc.Card(DB_DISPLAY_DASHBOARD, style={"marginTop": 30}),
             ],
             className="w-100"
             ),

@@ -15,8 +15,8 @@ register_page(
 TAGLINE = "A place to ID bacteria, organize strain collections & ask research questions."
 
 text_under_button1 = "Upload and analyze your MALDI-TOF MS data: protein dendrograms, metabolite association networks, or heatmaps."
-text_under_button2 = "Deposit spectra of genetically verified strains to the public IDBac database."
-text_under_button3 = "Explore number and type of strains in the database and their associated metadata."
+text_under_button2 = "Deposit spectra of genetically verified strains to the public IDBac knowledgebase."
+text_under_button3 = "Explore number and type of strains in the knowledgebase and their associated metadata."
 text_under_button4 = "Interested in IDBac but not ready to commit? Explore the IDBac platform using a sample dataset."
 text_under_button5 = "Click here to access instructions on how to use IDBac."
 
@@ -76,7 +76,7 @@ BUTTONS = dbc.Col(
             dbc.Col(
                 [
                     dbc.Button(
-                        "View Database", color="primary", className="m-2 button-fixed button-grey", href="/knowledgebase"
+                        "View Knowledgebase", color="primary", className="m-2 button-fixed button-grey", href="/knowledgebase"
                     ), 
                     html.P(text_under_button3, className="grey-box"),
                 ],
@@ -94,7 +94,7 @@ BUTTONS = dbc.Col(
             dbc.Col(
                 [
                     dbc.Button(
-                        "Documentation", color="primary", className="m-2 button-fixed button-grey", href="https://wang-bioinformatics-lab.github.io/GNPS2_Documentation/idbacdepositions/"
+                        "Video Tutorials & Documentation", color="primary", className="m-2 button-fixed button-grey", href="https://wang-bioinformatics-lab.github.io/GNPS2_Documentation/idbacdepositions/"
                     ),
                     html.P(text_under_button5, className="grey-box"),
                 ],
@@ -113,14 +113,14 @@ CTA = dbc.Col(
         [
             dbc.Col(
                 [
+                    html.P(
+                        [
+                            html.A("Before signing up, get a token here.", href="https://wang-bioinformatics-lab.github.io/GNPS2_Documentation/idbac-request-an-account/", className="link")
+                        ],
+                    ),
                     dbc.Button(
                         "Sign Up Now", color="primary", className="m-2 button-fixed button-blue", href="https://gnps2.org/user/signup", style={"padding-left": "30px", 
                                                                                                                                                "padding-right": "30px"}
-                    ),
-                    html.P(
-                        [
-                            html.A("Need a sign up token?", href="https://wang-bioinformatics-lab.github.io/GNPS2_Documentation/idbac-request-an-account/", className="link")
-                        ],
                     ),
                 ],
                 xs=12, sm=12, md=12, lg=12, xl=12,  # Always take full width
