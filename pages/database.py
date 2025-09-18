@@ -384,59 +384,6 @@ BODY = dbc.Container(
     className="",
 )
 
-# Callback to update the hover tiles based on DB contents
-@callback(
-    Output('tiles-container', 'children'),
-    Input('data-store', 'data'),
-)
-def update_hover_tiles(data):
-    try:
-        df = pd.DataFrame(data)
-        df = df.loc[df['Culture Collection'].notna(), :]
-        df['16S Genus'] = df['16S Taxonomy'].str.split().str[0].str.strip()
-        df['genus'] = df['genus'].fillna(df['16S Genus'])
-        df = df.loc[df['genus'].notna(), :]
-        # Ensure capitalization is consistent
-        df['genus'] = df['genus'].str.strip().str.title()
-        culture_collections = df["Culture Collection"].value_counts().index.tolist()
-        tiles = []
-        for collection in culture_collections:
-            unique_genera = df.loc[df['Culture Collection'] == collection, 'genus'].unique()
-            if len(unique_genera) == 0:
-                continue
-            num_entries = len(df[df['Culture Collection'] == collection])
-            under_text = ""
-            if num_entries == 1:
-                under_text = "1 entry"
-            elif num_entries > 1:
-                under_text = f"{num_entries:,} entries"
-            tooltip_text = ', '.join(unique_genera)
-            tiles.append(
-                dbc.Col(
-                    dbc.Card(
-                        [
-                            dbc.CardBody(
-                                [
-                                    html.H5(collection),
-                                    html.P(under_text),
-                                    dbc.Tooltip(tooltip_text, target=f"tooltip-{collection}")
-                                ]
-                            )
-                        ],
-                        id=f"tooltip-{collection}"
-                    ),
-                    width=4  # Adjust the width to control the number of tiles per row
-                )
-            )
-        return tiles
-    except Exception as e:
-        # Show stack trace
-        logging.error(f"Error updating hover tiles: {e}")
-        # Full trace
-        traceback.print_exc()
-        return []
-    
-
 # Callback to update the second pie chart based on the dropdown value
 @callback(
     Output('dynamic-taxonomy-pie-chart', 'figure'),
