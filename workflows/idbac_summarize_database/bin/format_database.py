@@ -30,6 +30,9 @@ def process_spectrum(json_filename, out_mzml, scan_mapping_file, json_file, scan
     spectrum_list = spectrum_dict["spectrum"]
     logging.info("Processing %s with %d spectra", json_filename, len(spectrum_list))
     
+    instrument_model = spectrum_dict.get("MALDI instrument", "unknown")
+    instrument_model = str(instrument_model).strip().lower().replace(" ", "_").replace("-", "_")
+
     for spectrum in spectrum_list:
         mz_array = [x[0] for x in spectrum]
         intensity_array = [x[1] for x in spectrum]
@@ -40,7 +43,8 @@ def process_spectrum(json_filename, out_mzml, scan_mapping_file, json_file, scan
                 id=f"scan={scan_counter}", params=[
                     "MS1 Spectrum",
                     {"ms level": 1},
-                    {"total ion current": sum(intensity_array)}
+                    {"total ion current": sum(intensity_array)},
+                    {"instrument model": instrument_model},
                 ])
 
         # Write scan mapping immediately
