@@ -1,13 +1,11 @@
-import sys
 import os
 import argparse
 import pandas as pd
-import requests
 import json
-from pyteomics import mzxml, mzml
+from pyteomics import mzml
 from massql import msql_fileloading
 from tqdm import tqdm
-import glob
+import logging
 import numpy as np
 
 def load_data(input_filename):
@@ -15,18 +13,8 @@ def load_data(input_filename):
         ms1_df, ms2_df = msql_fileloading.load_data(input_filename)
 
         return ms1_df, ms2_df
-    except:
-        print("Error loading data, falling back on default")
-
-    MS_precisions = {
-        1: 5e-6,
-        2: 20e-6,
-        3: 20e-6,
-        4: 20e-6,
-        5: 20e-6,
-        6: 20e-6,
-        7: 20e-6
-    }
+    except Exception as _:
+        logging.warning("Error loading data with massql, falling back on pyteomics")
     
     ms1_df = pd.DataFrame()
     ms2_df = pd.DataFrame()
@@ -35,12 +23,11 @@ def load_data(input_filename):
     all_i = []
     all_scan = []
     
-    # TODO: read the mzML directly
     with mzml.read(input_filename) as reader:
         for spectrum in tqdm(reader):
             try:
                 scan = spectrum["id"].replace("scanId=", "").split("scan=")[-1]
-            except:
+            except Exception as _:
                 scan = spectrum["id"]
 
             mz = spectrum["m/z array"]
@@ -59,17 +46,11 @@ def load_data(input_filename):
 
     return ms1_df, ms2_df
 
-def load_database(database_mzML, database_scan_mapping_tsv, merge_replicates="Yes", bin_size=1.0):
+def load_database(database_mzML, database_scan_mapping_tsv, bin_size=1.0):
     # Reading Data
     db_spectra, _ = load_data(database_mzML)
     db_scan_mapping_df = pd.read_csv(database_scan_mapping_tsv, sep="\t")
     
-    # Now we need to create consensus spectra in the database
-    max_mz = 15000.0
-
-    # Filtering m/z
-    db_spectra = db_spectra[db_spectra['mz'] < max_mz]
-
     # Bin the MS1 Data by m/z within each spectrum
     db_spectra['bin'] = (db_spectra['mz'] / bin_size).astype(int)
 
@@ -86,38 +67,41 @@ def load_database(database_mzML, database_scan_mapping_tsv, merge_replicates="Ye
     
     # Lets now merge everything
     merged_spectra_list = []
-    if merge_replicates == "Yes":
-        # We want to do this by database_id
-        all_database_id = spectra_binned_df["database_id"].unique()
-        for database_id in all_database_id:
-            bins_to_remove = []
-            filtered_df = spectra_binned_df[spectra_binned_df["database_id"] == database_id]
+    # We want to do this by database_id
+    all_database_id = spectra_binned_df["database_id"].unique()
+    for database_id in all_database_id:
+        bins_to_remove = []
+        filtered_df = spectra_binned_df[spectra_binned_df["database_id"] == database_id]
 
-            # Lets do the merge
-            all_bins = [x for x in filtered_df.columns if x.startswith("BIN_")]
-            for bin in all_bins:
-                all_values = filtered_df[bin]
+        # Lets do the merge
+        all_bins = [x for x in filtered_df.columns if x.startswith("BIN_")]
+        for _bin in all_bins:
+            all_values = filtered_df[_bin]
 
-                # Count non-zero values
-                non_zero_count = len(all_values[all_values > 0])
+            # Count non-zero values
+            non_zero_count = len(all_values[all_values > 0])
 
-                # Calculate percent non-zero
-                percent_non_zero = non_zero_count / len(all_values)
+            # Calculate percent non-zero
+            percent_non_zero = non_zero_count / len(all_values)
 
-                if percent_non_zero < 0.5:
-                    bins_to_remove.append(bin)
+            if percent_non_zero < 0.5:
+                bins_to_remove.append(_bin)
 
-            # Removing the bins
-            filtered_df = filtered_df.drop(bins_to_remove, axis=1)
+        # Removing the bins
+        filtered_df = filtered_df.drop(bins_to_remove, axis=1)
 
-            # Now lets get the mean for each bin
-            filtered_df = filtered_df.groupby("database_id").mean().reset_index()
-            filtered_df["scan"] = database_id
+        # Now lets get the mean for each bin
+        filtered_df = filtered_df.groupby("database_id").mean().reset_index()
+        filtered_df["scan"] = database_id
 
-            merged_spectra_list.append(filtered_df)
+        merged_spectra_list.append(filtered_df)
 
-        # merging everything
-        merged_spectra_df = pd.concat(merged_spectra_list)
+    # merging everything
+    if len(merged_spectra_list) == 0:
+        logging.warning("No spectra found in the database, exiting")
+        return pd.DataFrame()
+
+    merged_spectra_df = pd.concat(merged_spectra_list)
 
     return merged_spectra_df
 
@@ -125,7 +109,7 @@ def load_database(database_mzML, database_scan_mapping_tsv, merge_replicates="Ye
 def output_database(database_df, output_mgf_filename, output_scan_mapping, output_spectra_folder, bin_size=1.0):
     database_id_to_scan_list = []
 
-    with open(output_mgf_filename, "w") as o:
+    with open(output_mgf_filename, "w", encoding='utf-8') as o:
         database_list = database_df.to_dict(orient="records")
 
         for database_entry in database_list:
@@ -191,10 +175,12 @@ def main():
     
     args = parser.parse_args()
 
+    logging.basicConfig(level=logging.INFO)
+
     bin_size = float(args.bin_size)
 
     # Loading the database, this will also merge the spectra
-    database_df = load_database(args.database_mzML, args.database_scan_mapping_tsv, merge_replicates="Yes", bin_size=bin_size)
+    database_df = load_database(args.database_mzML, args.database_scan_mapping_tsv, bin_size=bin_size)
 
     # Create a row count column, starting at 0, counting all the way up, will be useful for keeping track of things when we do matrix multiplication
     database_df["row_count"] = np.arange(len(database_df))
@@ -204,8 +190,6 @@ def main():
 
     # Writing out the database itself so that we can more easily visualize it
     output_database(database_df, args.output_database_mgf, args.output_mapping, args.output_spectra_json, bin_size=bin_size)
-
-
 
 if __name__ == '__main__':
     main()
