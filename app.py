@@ -4,28 +4,21 @@ import logging
 import dash
 from dash import dcc
 from dash import html
-from dash import dash_table
 import dash_bootstrap_components as dbc
 from dash.dependencies import Input, Output, State
-import plotly.express as px
 import plotly.graph_objects as go 
 
 import os
-import urllib.parse
 from flask import Flask, send_file, send_from_directory, render_template
 
 import pandas as pd
-import requests
-import uuid
-import werkzeug
 
 import numpy as np
 from tqdm import tqdm
-import urllib
 import json
 import glob
+import yaml
 
-from collections import defaultdict
 from dotenv import dotenv_values, load_dotenv
 
 
@@ -528,7 +521,32 @@ def analysis_utils_get_species_options():
     # Format as Key: Value JSON
     species_options = [{"value-key": str(species), "display-key": str(species).capitalize()} for species in species_options]
     return json.dumps(species_options)
-    
+
+@server.route("/analysis-utils/get_instrument_options", methods=["GET"])
+def analysis_utils_get_instrument_options():
+    # Load the workflow yaml file
+    with open("workflows/idbac_summarize_database/bin/inst_peak_filtration.yml", "r", encoding='utf-8') as f:
+        config = yaml.safe_load(f)
+        print(config, flush=True)
+
+        # Reformat keys as a json list with "value" and "display" keys
+        keys = (config.keys())
+        out = []
+        for key in keys:
+            out.append({
+                    "value": key,
+                    "display": key.replace("_", " ").title().replace("Maldi", "MALDI").replace("Ms", "MS")
+            })
+
+        return json.dumps(out)
+
+@server.route("/analysis-utils/get_instrument_config", methods=["GET"])
+def analysis_utils_get_instrument_config():
+    if os.path.exists("workflows/idbac_summarize_database/bin/inst_peak_filtration.yml"):
+        return send_from_directory("workflows/idbac_summarize_database/bin", "inst_peak_filtration.yml")
+    else:
+        return "No Config Found", 404
+
 @server.route("/download_tree_png", methods=["GET"])
 def download_tree_png():
     if dev_mode:
