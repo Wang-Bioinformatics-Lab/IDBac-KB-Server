@@ -1,0 +1,12 @@
+database
+venv
+**/*.pyc
+workflows/idbac_summarize_database/.nextflow*
+workflows/idbac_summarize_database/nf_output/
+workflows/idbac_summarize_database/work/
+workflows/idbac_summarize_database/envs/
+conda_env/
+.ipynb_checkpoints
+assets/
+temp/
+workflows/idbac_summarize_database/nf_output*/
