@@ -36,8 +36,6 @@ def load_data(input_filename):
             all_mz += list(mz)
             all_i += list(intensity)
             all_scan += len(mz) * [scan]
-
-            print(spectrum["id"])
             
     if len(all_mz) > 0:
         ms1_df['i'] = all_i
@@ -105,6 +103,64 @@ def load_database(database_mzML, database_scan_mapping_tsv, bin_size=1.0):
 
     return merged_spectra_df
 
+def peak_filtering(database_df, database_scan_mapping_tsv, config):
+    """ Perform any instrument-specific postprocessing on merged spectra. 
+    Current operations include: relative intensity peak filtering based on instrument type.
+    
+    """
+    # Load the scan mapping
+    scan_mapping_df = pd.read_csv(database_scan_mapping_tsv, sep="\t")
+
+    # Load the config file
+    import yaml
+    with open(config, "r", encoding='utf-8') as f:
+        config = yaml.safe_load(f)
+    logging.info("Config:")
+    logging.info(config)
+
+    # Merge the instrument information into the database_df
+    database_df = database_df.merge(
+        scan_mapping_df[["database_id", "maldi_instrument"]],
+        how="left",
+        left_on="database_id",
+        right_on="database_id"
+    )
+
+    bin_cols = [x for x in database_df.columns if x.startswith("BIN_")]
+
+    def _helper(row):
+        """Set all bin_cols to zero if they are below the relative intensity threshold
+        for the given instrument
+
+        Inputs:
+            row: a row of the dataframe
+        Returns:
+            row: the modified row
+        """
+        inst = row["maldi_instrument"]
+        if pd.isna(inst):
+            inst = None
+        try:
+            c = config.get(inst, config["general"])
+        except KeyError as exc:
+            raise ValueError(f"Instrument {inst} not found in config file and no 'general' config was provided.") from exc
+        thresh = c.get("relative_intensity", 0.0)
+
+        if thresh > 0.0:
+            max_intensity = row[bin_cols].max()
+            if pd.isna(max_intensity) or max_intensity == 0:
+                # If all intensities are zero, do nothing
+                return row
+
+            relative_thresh = max_intensity * thresh
+            row[bin_cols] = row[bin_cols].apply(lambda x: x if x >= relative_thresh else 0)
+
+        return row        
+
+    database_df = database_df.apply(_helper, axis=1)
+    database_df = database_df.drop("maldi_instrument", axis=1)
+
+    return database_df
 
 def output_database(database_df, output_mgf_filename, output_scan_mapping, output_spectra_folder, bin_size=1.0):
     database_id_to_scan_list = []
@@ -172,6 +228,7 @@ def main():
     parser.add_argument('output_mapping', help="This is the output tsv mapping from database_id to scan number in the MGF file")
     parser.add_argument('output_spectra_json', help="This is where we output the processed data as individual json files")
     parser.add_argument('--bin_size', default=1.0, type=float, help="The bin size to use for binning the data")
+    parser.add_argument('--config', default=None, required=False, help="YAML file containing instrument-specific peak filtering configurations")
     
     args = parser.parse_args()
 
@@ -181,6 +238,13 @@ def main():
 
     # Loading the database, this will also merge the spectra
     database_df = load_database(args.database_mzML, args.database_scan_mapping_tsv, bin_size=bin_size)
+
+    # Instrument-Specific Postprocessing (Relative Intensity Peak Filtering)
+    if args.config:
+        logging.info("Config file provided, performing instrument-specific peak filtering")
+        database_df = peak_filtering(database_df, args.database_scan_mapping_tsv, args.config)
+    else:
+        logging.info("No config file provided, skipping instrument-specific peak filtering")
 
     # Create a row count column, starting at 0, counting all the way up, will be useful for keeping track of things when we do matrix multiplication
     database_df["row_count"] = np.arange(len(database_df))

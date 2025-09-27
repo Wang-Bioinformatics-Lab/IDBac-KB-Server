@@ -1,0 +1,5 @@
+general:
+  relative_intensity: 0.0
+
+shimadzu_maldi_8020:
+  relative_intensity: 0.03
