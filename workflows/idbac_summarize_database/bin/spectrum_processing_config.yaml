@@ -1,0 +1,34 @@
+ProteinSpectrumProcessing:
+  general:
+    transformIntensity:
+      method: "sqrt"
+
+    smoothIntensity:
+      method: "SavitzkyGolay"
+      halfWindowSize: 20
+
+    removeBaseline:
+      method: "TopHat"
+
+    detectPeaks:
+      method: "MAD"
+      halfWindowSize: 20
+      SNR: 4
+  shimadzu_maldi_8020:
+    transformIntensity:
+      method: "sqrt"
+
+    smoothIntensity:
+      method: "SavitzkyGolay"
+      halfWindowSize: 20
+
+    removeBaseline:
+      method: "TopHat"
+
+    detectPeaks:
+      method: "MAD"
+      halfWindowSize: 20
+      SNR: 20
+
+    filterPeaks:
+      relative_intensity: 0.04

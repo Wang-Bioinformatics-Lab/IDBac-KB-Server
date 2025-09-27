@@ -41,13 +41,14 @@ process baselineCorrection2 {
 
     input:
     file input_file 
+    file spectrum_processing_config
 
     output:
     file 'baselinecorrected/*.mzML'
 
     """
     mkdir baselinecorrected
-    Rscript $TOOL_FOLDER/baselineCorrection.R $input_file baselinecorrected/${input_file}
+    Rscript $TOOL_FOLDER/baselineCorrection.R $input_file baselinecorrected/${input_file} $spectrum_processing_config
     """
 }
 
@@ -102,12 +103,13 @@ process baselineCorrection2 {
 
 workflow {
     database_folder_ch = Channel.fromPath(params.input_database)
+    yaml_config_ch = Channel.fromPath("$TOOL_FOLDER/spectrum_processing_config.yaml")
 
     // Downloading Database
     (output_idbac_database_ch, output_scan_mapping_ch, output_idbac_mzML_ch) = formatDatabase(database_folder_ch)
 
     // Baseline Correct the spectra
-    baseline_corrected_database_mzML_ch = baselineCorrection2(output_idbac_mzML_ch)
+    baseline_corrected_database_mzML_ch = baselineCorrection2(output_idbac_mzML_ch, yaml_config_ch)
 
     // Merging the database spectra
     // (_, _, merged_json_folder_ch) = mergeSpectra(baseline_corrected_database_mzML_ch, output_scan_mapping_ch)
@@ -115,19 +117,19 @@ workflow {
     // Consolidating the merged output
     // prepareOutput(output_idbac_database_ch, merged_json_folder_ch)
 
-    MergeAndOutput1(   baseline_corrected_database_mzML_ch, 
-                        output_scan_mapping_ch,
-                        output_idbac_database_ch,
-                        1,
-                        // "./nf_output/1_da_bin"
-                    )
+    // MergeAndOutput1(   baseline_corrected_database_mzML_ch, 
+    //                     output_scan_mapping_ch,
+    //                     output_idbac_database_ch,
+    //                     1,
+    //                     // "./nf_output/1_da_bin"
+    //                 )
 
-    MergeAndOutput5(   baseline_corrected_database_mzML_ch, 
-                        output_scan_mapping_ch,
-                        output_idbac_database_ch,
-                        5,
-                        // "./nf_output/5_da_bin"
-                    )
+    // MergeAndOutput5(   baseline_corrected_database_mzML_ch, 
+    //                     output_scan_mapping_ch,
+    //                     output_idbac_database_ch,
+    //                     5,
+    //                     // "./nf_output/5_da_bin"
+                    // )
 
     MergeAndOutput10(   baseline_corrected_database_mzML_ch, 
                         output_scan_mapping_ch,
@@ -136,5 +138,5 @@ workflow {
                         // "./nf_output/10_da_bin"
                     )
 
-    MLInferenceWorkflow(    output_idbac_database_ch)
+    // MLInferenceWorkflow(    output_idbac_database_ch)
 }
