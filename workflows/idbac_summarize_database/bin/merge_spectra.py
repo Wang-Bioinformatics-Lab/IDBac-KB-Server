@@ -7,6 +7,7 @@ from massql import msql_fileloading
 from tqdm import tqdm
 import logging
 import numpy as np
+import yaml
 
 def load_data(input_filename):
     try:
@@ -112,7 +113,6 @@ def peak_filtering(database_df, database_scan_mapping_tsv, config):
     scan_mapping_df = pd.read_csv(database_scan_mapping_tsv, sep="\t")
 
     # Load the config file
-    import yaml
     with open(config, "r", encoding='utf-8') as f:
         config = yaml.safe_load(f)
     logging.info("Config:")
