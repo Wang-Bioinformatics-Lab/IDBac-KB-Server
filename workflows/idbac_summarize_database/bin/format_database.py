@@ -49,7 +49,7 @@ def process_spectrum(json_filename, out_mzml, scan_mapping_file, json_file, scan
 
         # Write scan mapping immediately
         if not dry_run:
-            scan_mapping_file.write(f"{scan_counter}\t{database_id}\n")
+            scan_mapping_file.write(f"{scan_counter}\t{database_id}\t{instrument_model}\n")
 
         scan_counter += 1
     
@@ -86,7 +86,7 @@ def main():
         MzMLWriter(open(args.output_library_mzml, 'wb'), close=True) as out_mzml:
     
         # Write headers into scan_mapping_file
-        scan_mapping_file.write("scan\tdatabase_id\n")
+        scan_mapping_file.write("scan\tdatabase_id\tmaldi_instrument\n")
 
         out_mzml.controlled_vocabularies()
         scan_counter = 1

@@ -26,7 +26,8 @@ process mergeSpectra {
     output_database.mgf \
     output_mapping.tsv \
     output_spectra_json \
-    --bin_size ${bin_size}
+    --bin_size ${bin_size} \
+    --config $TOOL_FOLDER/inst_peak_filtration.yml
     """
 }
 
