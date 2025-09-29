@@ -68,6 +68,18 @@ def task_summarize_depositions():
                 # Print full exception (without stacktrace)
                 print(traceback.format_exc(), file=sys.stderr, flush=True)
 
+            # Clean the 'Genabnk accession' to take whatever is after a space, colon, or pipe
+            try:
+                gb_acc = entry.get("Genbank accession", None)
+                if gb_acc is not None:
+                    # Split by space, colon, or pipe and take the last part
+                    parts = re.split(r'[ :|]', gb_acc)
+                    entry["Genbank accession"] = parts[-1].strip()
+            except Exception:
+                print(f"Error parsing Genbank accession {gb_acc}", file=sys.stderr, flush=True)
+                # Print full exception (without stacktrace)
+                print(traceback.format_exc(), file=sys.stderr, flush=True)
+
             # Drop all the peaks to save memory
             entry.pop("spectrum", None)
 
