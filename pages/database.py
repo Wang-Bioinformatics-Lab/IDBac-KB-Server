@@ -13,7 +13,18 @@ import traceback
 
 import pandas as pd
 
+import dash
 from dash import html, register_page  #, callback # If you need callbacks, import it here.
+
+from flask_caching import Cache
+
+# from app import server
+# memory_cache = Cache(config={
+#     'CACHE_TYPE': 'simple', 
+#     'CACHE_DEFAULT_TIMEOUT': 0, 
+#     'CACHE_THRESHOLD': 10,  # Keep your threshold setting
+# })
+# memory_cache.init_app(server) 
 
 
 PLOTLY_EXPORT_CONFIG = config = {
@@ -397,9 +408,10 @@ BODY = dbc.Container(
 @callback(
     Output('dynamic-taxonomy-pie-chart', 'figure'),
     Input('taxonomy-dropdown', 'value'),
-    Input('data-store', 'data'),
+    Input('data-mtime-store', 'data'),
+    State('data-store', 'data'),            # We'll detect if the data changed via mtime
 )
-def update_dynamic_pie_chart(selected_taxonomy, data):
+def update_dynamic_pie_chart(selected_taxonomy, mtime, data):
     dynamic_summary_df = None
     count_16S = 0
     number_of_database_entries = ""
