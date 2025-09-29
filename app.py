@@ -19,8 +19,7 @@ import json
 import glob
 import yaml
 
-from dotenv import dotenv_values, load_dotenv
-
+from dotenv import dotenv_values
 
 from flask_caching import Cache
 from flask import request
@@ -54,29 +53,16 @@ cache = Cache(app.server, config={
     'CACHE_DEFAULT_TIMEOUT': 0,
     'CACHE_THRESHOLD': 10000
 })
+memory_cache = Cache(config={
+    'CACHE_TYPE': 'simple', 
+    'CACHE_DEFAULT_TIMEOUT': 0, 
+    'CACHE_THRESHOLD': 10,  # Keep your threshold setting
+})
+memory_cache.init_app(app.server) 
 
 _env = dotenv_values()
 
 server = app.server
-
-# summary_df = None
-# number_of_database_entries = ""
-# if os.path.exists("database/summary.tsv"):
-#     summary_df = pd.read_csv("database/summary.tsv", sep="\t")
-#     number_of_database_entries = str(len(summary_df))
-
-#     summary_df["FullTaxonomy"] = summary_df["FullTaxonomy"].fillna("No Taxonomy")
-#     not_16S = ~ summary_df["FullTaxonomy"].str.contains("User Submitted 16S") & ~ summary_df["FullTaxonomy"].str.contains("No Taxonomy")
-#     is_16S  = summary_df["FullTaxonomy"].str.contains("User Submitted 16S")
-
-#     summary_df.loc[is_16S & (summary_df.genus.isna()), "Genus"] = summary_df.loc[is_16S, "FullTaxonomy"].str.split().str[0]
-#     summary_df.loc[is_16S & (summary_df.species.isna()), "Species"] = "User Submitted 16S"
-
-#     # Get counts by Genus and Species for px.bar
-#     # summary_df = summary_df.groupby(["Genus", "Species"]).size().reset_index(name="count")
-#     summary_df = summary_df.groupby(["Genus"]).size().reset_index(name="count")
-#     # Strip the Genus column of whitespace
-#     summary_df["Genus"] = summary_df["Genus"].str.strip()
 
 # setting tracking token
 app.index_string = """<!DOCTYPE html>
@@ -127,6 +113,7 @@ NAVBAR = dbc.Navbar(
 # Container should be full width
 app.layout = dbc.Container([ 
     dcc.Store(id='data-store', storage_type='memory',),
+    dcc.Store(id='data-mtime-store', storage_type='memory',),
     NAVBAR,
     dash.page_container
 ], fluid=True, style={"width": "100%", "margin": "0", "padding": "0"})
@@ -150,21 +137,40 @@ def last_updated(search):
     else:
         return [""]
 
-# TODO: CACHE ME
+def database_key_generator(*args, **kwargs):
+    """Generates a key based on the file's mtime."""
+    file_path = "database/summary.tsv"
+    
+    # Get the modification timestamp (seconds since epoch)
+    try:
+        mtime = os.path.getmtime(file_path)
+    except FileNotFoundError:
+        # If the file is missing, use a fixed key to force re-check
+        return "database-not-found" 
+
+    # Key = function name + mtime 
+    # (We include the function name to avoid collisions with other functions)
+    return f"load_database_{mtime}" 
+
 @app.callback(    
-            Output('data-store', 'data'),  # Update the data in the store
+            Output('data-store', 'data'),       # Update the data in the store
+            Output('data-mtime-store', 'data'), # Store the mtime of the file
             Input('url', 'search'))
+@memory_cache.memoize(make_name=database_key_generator) 
 def load_database(search):
     if not os.path.exists("database/summary.tsv"):
         logging.error("Database Summary File Not Found at database/summary.tsv")
-        return None
+        return None, None
     try:
         summary_df = pd.read_csv("database/summary.tsv", sep="\t")
+
+        mtime = os.path.getmtime("database/summary.tsv")
+
         data = summary_df.to_dict('records')
-        return data
+        return data, mtime
     except Exception as e:
         logging.error("Error Loading Database Summary File:", e)
-        return None
+        return None, None
 
 @app.callback([
                 Output('displaytable', 'data'),
