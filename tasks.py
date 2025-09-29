@@ -3,8 +3,10 @@ import glob
 import sys
 import os
 import json
+import traceback
 from ulid import ULID
 import pandas as pd
+import re
 import requests
 import requests_cache
 import xmltodict
@@ -52,6 +54,19 @@ def task_summarize_depositions():
         with open(json_filename, "r") as f:
             entry = json.loads(f.read())
             entry["database_id"] = os.path.basename(json_filename).replace(".json", "")
+            # Clean 'NCBI taxid' to be int or None using regex
+            try:
+                txid = entry.get("NCBI taxid", None)
+                if txid is not None:
+                    # Extract digits using regex
+                    match = re.search(r'\d+', str(txid))
+                    if match:
+                        entry["NCBI taxid"] = int(match.group(0))
+
+            except Exception:
+                print(f"Error parsing NCBI taxid {txid}", file=sys.stderr, flush=True)
+                # Print full exception (without stacktrace)
+                print(traceback.format_exc(), file=sys.stderr, flush=True)
 
             # Drop all the peaks to save memory
             entry.pop("spectrum", None)
