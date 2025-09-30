@@ -62,6 +62,7 @@ def task_summarize_depositions():
                     match = re.search(r'\d+', str(txid))
                     if match:
                         entry["NCBI taxid"] = int(match.group(0))
+                        print(f"Updated NCBI taxid from {txid} to {entry['NCBI taxid']}", file=sys.stderr, flush=True)
 
             except Exception:
                 print(f"Error parsing NCBI taxid {txid}", file=sys.stderr, flush=True)
@@ -73,8 +74,9 @@ def task_summarize_depositions():
                 gb_acc = entry.get("Genbank accession", None)
                 if gb_acc is not None:
                     # Split by space, colon, or pipe and take the last part
-                    parts = re.split(r'[ :|]', gb_acc)
+                    parts = re.split(r'[ :|]', str(gb_acc))
                     entry["Genbank accession"] = parts[-1].strip()
+                    print(f"Updated Genbank accession from {gb_acc} to {entry['Genbank accession']}", file=sys.stderr, flush=True)
             except Exception:
                 print(f"Error parsing Genbank accession {gb_acc}", file=sys.stderr, flush=True)
                 # Print full exception (without stacktrace)
