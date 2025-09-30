@@ -74,6 +74,10 @@ def task_summarize_depositions():
             try:
                 gb_acc = entry.get("Genbank accession", None)
                 if gb_acc is not None:
+                    # Remove all training and preceding whitespace/delimiters
+                    gb_acc = gb_acc.strip()
+                    gb_acc = re.sub(r'^[\s:|]+', '', gb_acc)
+                    gb_acc = re.sub(r'[\s:|]+$', '', gb_acc)
                     # Split by space, colon, or pipe and take the last part
                     parts = re.split(r'[ :|]', str(gb_acc))
                     if len(parts) > 1:
