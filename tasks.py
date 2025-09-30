@@ -10,6 +10,7 @@ import re
 import requests
 import requests_cache
 import xmltodict
+import math
 from utils import populate_taxonomies, generate_tree
 from utils import calculate_checksum
 from time import time
@@ -57,7 +58,7 @@ def task_summarize_depositions():
             # Clean 'NCBI taxid' to be int or None using regex
             try:
                 txid = entry.get("NCBI taxid", None)
-                if txid is not None:
+                if (not math.isnan(txid)) and (txid is not None):
                     # Extract digits using regex
                     match = re.search(r'\d+', str(txid))
                     if match:
@@ -73,7 +74,8 @@ def task_summarize_depositions():
             # Clean the 'Genabnk accession' to take whatever is after a space, colon, or pipe
             try:
                 gb_acc = entry.get("Genbank accession", None)
-                if gb_acc is not None:
+                if (not math.isnan(gb_acc)) and (gb_acc is not None):
+                    gb_acc = str(gb_acc)
                     # Remove all training and preceding whitespace/delimiters
                     gb_acc = gb_acc.strip()
                     gb_acc = re.sub(r'^[\s:|]+', '', gb_acc)
