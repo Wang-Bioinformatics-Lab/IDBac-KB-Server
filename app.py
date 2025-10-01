@@ -189,19 +189,25 @@ def update_table_server_side(full_data_dict, search, page_current, page_size, so
         page_current = 0
 
     # --- Manual Filtering Example (Simple) ---
-    # This is highly simplified. For full functionality, you should use a
-    # robust parsing method, like the one in the Dash documentation examples.
-
-    if filter_query is not None and filter_query.strip() != "":
+    # Simply a 'contains'
+    if filter_query and filter_query.strip():
         filtering_expressions = filter_query.split(' && ')
         for expression in filtering_expressions:
-            if ' eq ' in expression:
-                col, val = expression.split(' eq ')
+            if ' icontains ' in expression:
+                col, val = expression.split(' icontains ')
                 col = col.strip('{ }')
                 val = val.strip(' "')
                 if col in df.columns:
-                    df = df[df[col].astype(str).str.lower() == val.lower()]
-        # ------------------------------------------
+                    # contains (case-insensitive), instead of exact match
+                    df = df[df[col].astype(str).str.contains(val, case=False, na=False)]
+            elif ' scontains ' in expression:
+                col, val = expression.split(' scontains ')
+                col = col.strip('{ }')
+                val = val.strip(' "')
+                if col in df.columns:
+                    # contains (case-sensitive), instead of exact match
+                    df = df[df[col].astype(str).str.contains(val, case=True, na=False)]
+    # ------------------------------------------
 
     # 3. Apply Sorting
     if sort_by is not None:
