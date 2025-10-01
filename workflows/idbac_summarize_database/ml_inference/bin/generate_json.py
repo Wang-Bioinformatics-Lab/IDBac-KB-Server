@@ -3,6 +3,7 @@ from pathlib import Path
 import pandas as pd
 import json
 from tqdm import tqdm
+import logging
 
 """
 Keys:
@@ -17,6 +18,11 @@ def main():
     parser.add_argument('--idbac_ml_vectors', type=str, help='Path to the input IDBac ML vectors feather file')
     parser.add_argument('--output_file', type=str, required=True, help='Output file to save the generated JSON')
     args = parser.parse_args()
+
+    logging.basicConfig(level=logging.INFO)
+
+    for arg in vars(args):
+        logging.info("%s: %s", arg, getattr(args, arg))
 
     idbac_full_spectra_json = Path(args.idbac_full_spectra_json)
     idbac_ml_vectors = Path(args.idbac_ml_vectors)
@@ -44,7 +50,12 @@ def main():
             db_id = data.get('database_id')
 
             data['raw_spectrum']    = data['spectrum']
-            data['spectrum']        = ml_vectors_dict[db_id].tolist()
+            embedding = ml_vectors_dict.get(db_id)
+            if embedding is None:
+                logging.warning(f"No ML vector found for database_id: {db_id}. Skipping.")
+                continue
+
+            data['spectrum']        = embedding.tolist()
 
             # Write the modified data to the output file
             out_f.write(json.dumps(data) + '\n')

@@ -162,28 +162,82 @@ def load_database(search):
         logging.error(f"Error Loading Database Summary File: {e}")
         return None, None
 
-@app.callback([
-                Output('displaytable', 'data'),
-                Output('displaytable', 'columns'),
-                Output('displaytable', 'hidden_columns'),
-              ],
-              [ Input('data-store', 'data'),
-                Input('url', 'search'),
-            ])
-def display_table(sumary_df, search):
-    summary_df = pd.DataFrame(sumary_df)
-    # Remove columns shown in "Additional Data"
-    shown_columns = set(["Strain name", "Culture Collection", "PI",
-                      "genus", "species", "Isolate Source",])
-    # Make safe if columns are missing
-    shown_columns = list(set(summary_df.columns) & shown_columns)
-    hidden_columns = list(set(summary_df.columns) - set(shown_columns))
+@app.callback(
+    [
+        Output('displaytable', 'data'),
+        Output('displaytable', 'columns'),
+        Output('displaytable', 'hidden_columns'),
+        Output('displaytable', 'page_count') # New output for page_count
+    ],
+    [
+        Input('data-store', 'data'), # Full data stored in a dcc.Store
+        Input('url', 'search'),
+        
+        # --- New Inputs from the DataTable ---
+        Input('displaytable', 'page_current'),
+        Input('displaytable', 'page_size'),
+        Input('displaytable', 'sort_by'),
+        Input('displaytable', 'filter_query')
+        # ------------------------------------
+    ],
+    prevent_initial_call=True
+)
+def update_table_server_side(full_data_dict, search, page_current, page_size, sort_by, filter_query):
+    df = pd.DataFrame(full_data_dict)
 
-    columns = [{"name": i, "id": i, "hideable": True} for i in summary_df.columns]
+    if page_current is None:
+        page_current = 0
 
-    data = summary_df.to_dict('records')
+    # --- Manual Filtering Example (Simple) ---
+    # This is highly simplified. For full functionality, you should use a
+    # robust parsing method, like the one in the Dash documentation examples.
+
+    if filter_query is not None and filter_query.strip() != "":
+        filtering_expressions = filter_query.split(' && ')
+        for expression in filtering_expressions:
+            if ' eq ' in expression:
+                col, val = expression.split(' eq ')
+                col = col.strip('{ }')
+                val = val.strip(' "')
+                if col in df.columns:
+                    df = df[df[col].astype(str).str.lower() == val.lower()]
+        # ------------------------------------------
+
+    # 3. Apply Sorting
+    if sort_by is not None:
+        if len(sort_by):
+            df = df.sort_values(
+                [col['column_id'] for col in sort_by],
+                ascending=[
+                    col['direction'] == 'asc'
+                    for col in sort_by
+                ],
+                inplace=False
+            )
     
-    return [data, columns, hidden_columns]
+    # 4. Calculate Total Pages
+    total_rows = len(df)
+    page_count = (total_rows + page_size - 1) // page_size
+    
+    # 5. Apply Pagination (Slice the data)
+    data_page = df.iloc[
+        page_current * page_size : (page_current + 1) * page_size
+    ]
+
+    # 6. Define Columns (as before, but using the filtered/sorted df)
+    shown_columns = set(["Strain name", "Culture Collection", "PI", "genus", "species", "Isolate Source",])
+    shown_columns = list(set(df.columns) & shown_columns)
+    hidden_columns = list(set(df.columns) - set(shown_columns))
+
+    columns = [{"name": i, "id": i, "hideable": True} for i in df.columns]
+
+    # 7. Return the data for the current page, column definitions, hidden columns, and page count
+    return [
+        data_page.to_dict('records'),
+        columns,
+        hidden_columns,
+        page_count # The total number of pages
+    ]
 
 
 # We will plot spectra based on which row is selected in the table
@@ -195,8 +249,6 @@ def display_table(sumary_df, search):
         Input('displaytable', 'derived_virtual_selected_rows')
     ])
 def update_spectrum(spectra_bin_size, table_data, table_selected):
-    # Getting the row values
-
     if table_selected is None or len(table_selected) == 0:
         return "No spectra selected"
 

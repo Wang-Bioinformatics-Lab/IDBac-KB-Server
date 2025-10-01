@@ -5,18 +5,14 @@ from dash import dash_table
 from dash import callback
 from dash.dependencies import Input, Output, State
 import dash_bootstrap_components as dbc
-import plotly
 import plotly.express as px
 import os
-import logging
-import traceback
+from io import BytesIO
 
 import pandas as pd
 
 import dash
 from dash import html, register_page  #, callback # If you need callbacks, import it here.
-
-from flask_caching import Cache
 
 # from app import server
 # memory_cache = Cache(config={
@@ -73,10 +69,16 @@ DATASELECTION_CARD = [
                     data=[],
                     hidden_columns=[],
                     row_selectable='single',
-                    page_size=10,
-                    sort_action='native',
-                    filter_action='native',
-                    export_format='xlsx',
+                    # --- Properties for Server-Side Pagination, Sorting, and Filtering ---
+                    page_action='custom',
+                    page_current=0, # Start at the first page
+                    page_size=10,   # Number of rows per page
+                    page_count=1,   # Will be updated in the callback
+                    sort_action='custom',
+                    sort_mode='multi', # Optional, but common for server-side
+                    filter_action='custom',
+                    # --------------------------------------------------------------------
+                    export_format='none',
                     export_headers='display',
                     filter_options={'case': 'insensitive',
                                     'placeholder_text': 'Filter table...'},
@@ -99,6 +101,13 @@ DATASELECTION_CARD = [
             ],
             id="displaycontent"),
             html.Br(),
+            dbc.Row(
+            dbc.Col(
+                    dbc.Button("Download Table as CSV", id="download-button", color="primary"),
+                    className="d-flex justify-content-end"
+                )
+            ),
+            dcc.Download(id="download-dataframe-csv"),
             html.Br(),
             html.Div(id="update-summary")
 
@@ -173,6 +182,19 @@ def update_view_raw_link(selected_rows, table_data):
     selected_row = table_data[selected_rows[0]]
     database_id = selected_row["database_id"]
     return f"/raw-viewer/?database_id={database_id}"
+
+@callback(
+    Output("download-dataframe-csv", "data"),
+    Input("download-button", "n_clicks"),
+    State("data-store", "data"),
+    prevent_initial_call=True
+)
+def download_table_as_csv(n_clicks, stored_data):
+    if not stored_data:
+        return dash.no_update
+    df = pd.DataFrame(stored_data)
+    return dcc.send_data_frame(df.to_csv, "IDBac_KB_Spectra_List.csv", index=False)
+
 
 db_content_dropdown_options = [
     # {'label': 'Kingdom', 'value': 'Kingdom'},

@@ -58,7 +58,7 @@ def task_summarize_depositions():
             # Clean 'NCBI taxid' to be int or None using regex
             try:
                 txid = entry.get("NCBI taxid", None)
-                if (not math.isnan(txid)) and (txid is not None):
+                if (txid is not None):
                     # Extract digits using regex
                     match = re.search(r'\d+', str(txid))
                     if match:
@@ -74,7 +74,7 @@ def task_summarize_depositions():
             # Clean the 'Genabnk accession' to take whatever is after a space, colon, or pipe
             try:
                 gb_acc = entry.get("Genbank accession", None)
-                if (not math.isnan(gb_acc)) and (gb_acc is not None):
+                if (isinstance(gb_acc, str)) or (gb_acc is not None):
                     gb_acc = str(gb_acc)
                     # Remove all training and preceding whitespace/delimiters
                     gb_acc = gb_acc.strip()

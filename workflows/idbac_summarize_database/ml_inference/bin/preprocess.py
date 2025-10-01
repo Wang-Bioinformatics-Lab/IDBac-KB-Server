@@ -52,6 +52,11 @@ def process_line(line_output):
         with writer.run(id='my_analysis'):
             with writer.spectrum_list(count=len(all_scans)):
                 for scan_idx, scan in enumerate(all_scans):
+                    # If the length of the scan is 0, print it
+                    if len(scan) == 0:
+                        logging.warning(f"Scan {scan_idx} in {db_id} is empty after processing.")
+                        continue
+
                     mz_array, intensity_array = zip(*scan)
                     writer.write_spectrum(
                         mz_array,
