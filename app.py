@@ -135,12 +135,14 @@ def last_updated(search):
         Input('displaytable', 'page_current'),
         Input('displaytable', 'page_size'),
         Input('displaytable', 'sort_by'),
-        Input('displaytable', 'filter_query')
+        Input('displaytable', 'filter_query'),
+        Input('displaytable', 'columns'),
+        Input('displaytable', 'hidden_columns'),
         # ------------------------------------
     ],
     prevent_initial_call=True
 )
-def update_table_server_side(search, page_current, page_size, sort_by, filter_query):
+def update_table_server_side(search, page_current, page_size, sort_by, filter_query, columns, currently_hidden_cols):
     df = pd.DataFrame(DATABASE)
 
     if page_current is None:
@@ -189,7 +191,11 @@ def update_table_server_side(search, page_current, page_size, sort_by, filter_qu
     ]
 
     # 6. Define Columns (as before, but using the filtered/sorted df)
-    shown_columns = set(["Strain name", "Culture Collection", "PI", "genus", "species", "Isolate Source",])
+    if columns is not None and len(columns) > 0:
+        currently_hidden_cols = set(currently_hidden_cols)
+        shown_columns = set([col['name'] for col in columns if col['name'] not in currently_hidden_cols])
+    else:
+        shown_columns = set(["Strain name", "Culture Collection", "PI", "genus", "species", "Isolate Source",])
     shown_columns = list(set(df.columns) & shown_columns)
     hidden_columns = list(set(df.columns) - set(shown_columns))
 
