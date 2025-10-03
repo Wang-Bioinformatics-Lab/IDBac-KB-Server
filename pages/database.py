@@ -14,6 +14,10 @@ import pandas as pd
 import dash
 from dash import html, register_page  #, callback # If you need callbacks, import it here.
 
+from data_loader import load_database
+
+DATABASE = load_database(None)[0]
+
 # from app import server
 # memory_cache = Cache(config={
 #     'CACHE_TYPE': 'simple', 
@@ -186,13 +190,12 @@ def update_view_raw_link(selected_rows, table_data):
 @callback(
     Output("download-dataframe-csv", "data"),
     Input("download-button", "n_clicks"),
-    State("data-store", "data"),
     prevent_initial_call=True
 )
-def download_table_as_csv(n_clicks, stored_data):
-    if not stored_data:
+def download_table_as_csv(n_clicks):
+    if not DATABASE:
         return dash.no_update
-    df = pd.DataFrame(stored_data)
+    df = pd.DataFrame(DATABASE)
     return dcc.send_data_frame(df.to_csv, "IDBac_KB_Spectra_List.csv", index=False)
 
 
@@ -430,16 +433,14 @@ BODY = dbc.Container(
 @callback(
     Output('dynamic-taxonomy-pie-chart', 'figure'),
     Input('taxonomy-dropdown', 'value'),
-    Input('data-mtime-store', 'data'),
-    State('data-store', 'data'),            # We'll detect if the data changed via mtime
 )
-def update_dynamic_pie_chart(selected_taxonomy, mtime, data):
+def update_dynamic_pie_chart(selected_taxonomy):
     dynamic_summary_df = None
     count_16S = 0
     number_of_database_entries = ""
     percent_16S = 0.0
-    if data is not None:
-        dynamic_summary_df = pd.DataFrame(data)
+    if DATABASE is not None:
+        dynamic_summary_df = pd.DataFrame(DATABASE)
 
         dynamic_summary_df[selected_taxonomy] = dynamic_summary_df[selected_taxonomy].fillna("No Taxonomy")
         
@@ -556,6 +557,5 @@ def update_button_visibility(selected_rows):
 
 def layout(**kwargs):
     return html.Div(children=[
-        dcc.Store(id='data-store', storage_type='memory',),
         BODY, 
         ])

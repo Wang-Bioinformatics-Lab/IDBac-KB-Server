@@ -27,6 +27,9 @@ from utils import convert_to_mzml, fetch_with_retry
 import logging
 from typing import Tuple
 
+from data_loader import load_database
+DATABASE = load_database(None)[0]
+
 dev_mode = False
 if not os.path.isdir('/app'):
     dev_mode =  True
@@ -152,7 +155,7 @@ BODY = dbc.Container(
 def layout(**kwargs):
     return html.Div(children=[BODY,
                                # Store for intermediate data
-                                dcc.Store(id='data-store', storage_type='memory'),
+                                dcc.Store(id='mirror-data-store', storage_type='memory'),
     ])
 
 def _get_spectrum_resolver(usi:str)->dict:
@@ -165,12 +168,11 @@ def _get_spectrum_resolver(usi:str)->dict:
 
     # Looks like this: https://metabolomics-usi.gnps2.org/json/?usi1=mzspec%3AGNPS2%3ATASK-ddd9cb3cf41f435ab66c06554836dc5e-gnps_network/specs_ms.mgf%3Ascan%3A714
 
-    r = fetch_with_retry(
+    response_text = fetch_with_retry(
         f"https://metabolomics-usi.gnps2.org/json/?usi1={usi}",
     )
-    r.raise_for_status()
 
-    j = r.json() # j['peaks] is a list of lists [[mz, intensity], ...]
+    j = json.loads(response_text) # j['peaks] is a list of lists [[mz, intensity], ...]
     if 'peaks' not in j:
         logging.error(f"Failed to fetch spectrum for USI {usi}. Response: {j}")
         return None
@@ -509,10 +511,10 @@ def create_mirror_plot(spectrum_a, spectrum_b=None, mass_range=None, mass_tolera
     return fig, cosine_score
 
 @callback(
-    Output("data-store", "data", allow_duplicate=True),
+    Output("mirror-data-store", "data", allow_duplicate=True),
     Input("mirror-plot-usi-submit", "n_clicks"),
     State("mirror-plot-usi-input", "value"),
-    State("data-store", "data"),
+    State("mirror-data-store", "data"),
     prevent_initial_call=True,
 )
 def update_data_store(n_clicks, usi, data_store):
@@ -555,7 +557,7 @@ def update_data_store(n_clicks, usi, data_store):
     Output("mirror-plot-input-a", "options"),
     Output("mirror-plot-input-b", "options"),
     Input("mirror-plot-search-type", "value"),
-    Input("data-store", "data"),
+    Input("mirror-data-store", "data"),
     prevent_initial_call=False,
 )
 def update_input_options(search_type, data):
@@ -568,6 +570,11 @@ def update_input_options(search_type, data):
     Returns:
         list: The options for the input dropdowns.
     """
+    if data is None:
+        data = DATABASE
+    else:
+        # Concat the data 
+        data = data + DATABASE
     if data is None:
         return [], []
 
@@ -589,7 +596,7 @@ def update_input_options(search_type, data):
     Output("mirror-plot-input-b", "value"),
     Output("mirror-plot-search-type", "value"),
     Input("url", "search"),
-    Input("data-store", "data"),
+    Input("mirror-data-store", "data"),
 )
 def set_inputs_from_url(search, _):
     """ Sets the inputs from the URL if not specified.

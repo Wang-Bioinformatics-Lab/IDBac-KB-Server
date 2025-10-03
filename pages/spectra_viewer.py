@@ -23,6 +23,9 @@ from dash import html, register_page
 
 from utils import convert_to_mzml
 
+from data_loader import load_database
+DATABASE = load_database(None)[0]
+
 dev_mode = False
 if not os.path.isdir('/app'):
     dev_mode =  True
@@ -80,10 +83,7 @@ BODY = dbc.Container(
 )
 
 def layout(**kwargs):
-    return html.Div(children=[BODY,
-                               # Store for intermediate data
-                                dcc.Store(id='data-store', storage_type='memory'),
-    ])
+    return html.Div(children=[BODY])
 
 def _get_processed_spectrum(database_id:str)->dict:
     """ Returns the processed spectrum for a given database id.
@@ -114,14 +114,14 @@ def _get_processed_spectrum(database_id:str)->dict:
 
 @callback(
     Output("pagination", "max_value"),
-    Input('data-store', 'data'),  # Using data from dcc.Store
-    prevent_initial_call=True
+    Input("pagination", "active_page"), # We don't really need this, but dash requires some input
+    prevent_initial_call=False
 )
-def update_pagination_max(data_table):
-    if data_table is None:
+def update_pagination_max(active_page):
+    if DATABASE is None:
         return 0
     # Calculate total pages based on the data table size
-    total_items = len(data_table)
+    total_items = len(DATABASE)
     return (total_items + PAGE_SIZE - 1) // PAGE_SIZE
 
 def format_spectrum(spectrum: dict) -> dict:
@@ -187,14 +187,13 @@ def estimate_convexity(spectrum: dict, rescale:bool=False) -> tuple:
     Input("pagination", "active_page"),
     Input("search-button", "n_clicks"),
     State("search-input", "value"),
-    Input('data-store', 'data'),    # Set to input so when data loads asyncronously it triggers a refreshasyncronously 
     prevent_initial_call=False
 )
-def update_spectra_display(active_page, n_clicks, search_id, data_table):
-    if data_table is None:
+def update_spectra_display(active_page, n_clicks, search_id):
+    if DATABASE is None:
         return [], 1
 
-    data_table = pd.DataFrame(data_table)
+    data_table = pd.DataFrame(DATABASE)
 
     # Determine if this callback was triggered by the search button
     if ctx.triggered_id == "search-button" and search_id:

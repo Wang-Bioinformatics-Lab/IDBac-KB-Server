@@ -18,6 +18,8 @@ import glob
 
 from flask_caching import Cache
 
+from data_loader import load_database
+
 dev_mode = False
 if not os.path.isdir('/app'):
     dev_mode =  True
@@ -45,12 +47,6 @@ cache = Cache(app.server, config={
     'CACHE_DEFAULT_TIMEOUT': 0,
     'CACHE_THRESHOLD': 10000
 })
-memory_cache = Cache(config={
-    'CACHE_TYPE': 'simple', 
-    'CACHE_DEFAULT_TIMEOUT': 0, 
-    'CACHE_THRESHOLD': 10,  # Keep your threshold setting
-})
-memory_cache.init_app(app.server) 
 
 server = app.server
 
@@ -100,10 +96,10 @@ NAVBAR = dbc.Navbar(
     sticky="top",
 )
 
+DATABASE = load_database(None)[0]
+
 # Container should be full width
 app.layout = dbc.Container([ 
-    dcc.Store(id='data-store', storage_type='memory',),
-    dcc.Store(id='data-mtime-store', storage_type='memory',),
     NAVBAR,
     dash.page_container
 ], fluid=True, style={"width": "100%", "margin": "0", "padding": "0"})
@@ -111,9 +107,7 @@ app.layout = dbc.Container([
 def _get_url_param(param_dict, key, default):
     return param_dict.get(key, [default])[0]
 
-@app.callback([
-                Output('update-summary', 'children')
-              ],
+@app.callback([Output('update-summary', 'children')],
               [Input('url', 'search')])
 def last_updated(search):
     path_to_database_consolidated_file = os.path.join("/app/workflows/idbac_summarize_database/nf_output/10_da_bin/", "output_merged_spectra.json")
@@ -127,41 +121,6 @@ def last_updated(search):
     else:
         return [""]
 
-def database_key_generator(*args, **kwargs):
-    """Generates a key based on the file's mtime."""
-    file_path = "database/summary.tsv"
-    
-    # Get the modification timestamp (seconds since epoch)
-    try:
-        mtime = os.path.getmtime(file_path)
-    except FileNotFoundError:
-        # If the file is missing, use a fixed key to force re-check
-        return "database-not-found" 
-
-    # Key = function name + mtime 
-    # (We include the function name to avoid collisions with other functions)
-    return f"load_database_{mtime}" 
-
-@app.callback(    
-            Output('data-store', 'data'),       # Update the data in the store
-            Output('data-mtime-store', 'data'), # Store the mtime of the file
-            Input('url', 'search'))
-@memory_cache.memoize(make_name=database_key_generator) 
-def load_database(search):
-    if not os.path.exists("database/summary.tsv"):
-        logging.error("Database Summary File Not Found at database/summary.tsv")
-        return None, None
-    try:
-        summary_df = pd.read_csv("database/summary.tsv", sep="\t")
-
-        mtime = os.path.getmtime("database/summary.tsv")
-
-        data = summary_df.to_dict('records')
-        return data, mtime
-    except Exception as e:
-        logging.error(f"Error Loading Database Summary File: {e}")
-        return None, None
-
 @app.callback(
     [
         Output('displaytable', 'data'),
@@ -170,7 +129,6 @@ def load_database(search):
         Output('displaytable', 'page_count') # New output for page_count
     ],
     [
-        Input('data-store', 'data'), # Full data stored in a dcc.Store
         Input('url', 'search'),
         
         # --- New Inputs from the DataTable ---
@@ -182,8 +140,8 @@ def load_database(search):
     ],
     prevent_initial_call=True
 )
-def update_table_server_side(full_data_dict, search, page_current, page_size, sort_by, filter_query):
-    df = pd.DataFrame(full_data_dict)
+def update_table_server_side(search, page_current, page_size, sort_by, filter_query):
+    df = pd.DataFrame(DATABASE)
 
     if page_current is None:
         page_current = 0

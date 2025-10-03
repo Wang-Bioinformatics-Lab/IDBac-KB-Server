@@ -25,6 +25,11 @@ from dash import html, register_page
 from utils import convert_to_mzml
 from typing import List
 
+
+from data_loader import load_database
+DATABASE = load_database(None)[0]
+
+
 dev_mode = False
 if not os.path.isdir('/app'):
     dev_mode =  True
@@ -78,10 +83,7 @@ BODY = dbc.Container(
 )
 
 def layout(**kwargs):
-    return html.Div(children=[BODY,
-                               # Store for intermediate data
-                                dcc.Store(id='data-store', storage_type='memory'),
-    ])
+    return html.Div(children=[BODY])
 
 def _get_raw_spectrum(database_id:str)->dict:
     # Finding all the database files
@@ -127,20 +129,19 @@ def format_spectrum(spectrum: dict) -> List[np.array]:
 
 @callback(
     Output("raw-spectra", "children"),
-    Input('data-store', 'data'),  # Using data from dcc.Store
     Input("database-id", 'value'),
     Input('url', 'search'),
     prevent_initial_call=False
 )
-def update_raw_viewer(data_table, database_id, search):
+def update_raw_viewer(database_id, search):
     print("got database_id", database_id, "search", search, flush=True)
     if database_id is None and search is not None:
         database_id = search.split('=')[-1]
 
-    if data_table is None:
+    if DATABASE is None:
         return []
 
-    data_table = pd.DataFrame(data_table)
+    data_table = pd.DataFrame(DATABASE)
 
     if database_id is None:
         database_id = data_table.iloc[0]["database_id"]
