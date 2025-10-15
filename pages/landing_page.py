@@ -14,12 +14,8 @@ register_page(
 
 TAGLINE = "A place to ID bacteria, organize strain collections & ask research questions."
 
-text_under_button1 = "Upload and analyze your MALDI-TOF MS data: protein dendrograms, metabolite association networks, or heatmaps."
-text_under_button2 = "Deposit spectra of genetically verified strains to the public IDBac knowledgebase."
-text_under_button3 = "Explore number and type of strains in the knowledgebase and their associated metadata."
-text_under_button4 = "Interested in IDBac but not ready to commit? Explore the IDBac platform using a sample dataset."
-text_under_button5 = "Click here to access instructions on how to use IDBac."
-
+text_under_button1 = "Learn more about the IDBac platform and access step-by-step video tutorials."
+text_under_button2 = "Explore the size and diversity of the IDBac Knowledgebase (IDBac-KB)."
 
 DATABASE_CONTENTS = dbc.Container(html.H3(
     id="database-contents-text",
@@ -58,53 +54,26 @@ BUTTONS = dbc.Col(
             dbc.Col(
                 [
                     dbc.Button(
-                        "Analyze Data", color="primary", className="m-2 button-fixed button-blue", href="https://gnps2.org/workflowinput?workflowname=idbac_analysis_workflow"
+                        "IDBac introduction & video tutorials", color="primary", className="m-2 button-fixed button-blue", href="https://sites.google.com/uic.edu/idbac-documentation/"
                     ), 
                     html.P(text_under_button1, className="grey-box"),
                 ],
-                xs=12, sm=12, md=6, lg=2, xl=2  # Full width on mobile, one row on desktop
+                xs=12, sm=12, md=4, lg=4, xl=4  # Full width on mobile, one row on desktop
             ),
             dbc.Col(
                 [
                     dbc.Button(
-                        "Deposit Data", color="primary", className="m-2 button-fixed button-blue", href="https://gnps2.org/workflowinput?workflowname=idbacdeposition_workflow"
+                        "Visit the IDBac Knowledgebase", color="primary", className="m-2 button-fixed button-blue", href="/knowledgebase"
                     ), 
                     html.P(text_under_button2, className="grey-box"),
                 ],
-                xs=12, sm=12, md=6, lg=2, xl=2
-            ),
-            dbc.Col(
-                [
-                    dbc.Button(
-                        "View Knowledgebase", color="primary", className="m-2 button-fixed button-grey", href="/knowledgebase"
-                    ), 
-                    html.P(text_under_button3, className="grey-box"),
-                ],
-                xs=12, sm=12, md=6, lg=2, xl=2
-            ),
-            dbc.Col(
-                [
-                    dbc.Button(
-                        "Interactive Interface", color="primary", className="m-2 button-fixed button-grey", href="https://analysis.idbac.org/"
-                    ),
-                    html.P(text_under_button4, className="grey-box"),
-                ],
-                xs=12, sm=12, md=6, lg=2, xl=2
-            ),
-            dbc.Col(
-                [
-                    dbc.Button(
-                        "Video Tutorials & Documentation", color="primary", className="m-2 button-fixed button-grey", href="https://wang-bioinformatics-lab.github.io/GNPS2_Documentation/idbacdepositions/"
-                    ),
-                    html.P(text_under_button5, className="grey-box"),
-                ],
-                xs=12, sm=12, md=6, lg=2, xl=2
+                xs=12, sm=12, md=4, lg=4, xl=4
             ),
         ],
         justify="center",
         className="button-container"
     ),
-    width='100%'
+    width='80%'
 )
 
 # Define the Call-To-Action (CTA) section
