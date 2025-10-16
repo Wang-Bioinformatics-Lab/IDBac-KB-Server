@@ -9,7 +9,7 @@ from dash.dependencies import Input, Output, State
 import plotly.graph_objects as go
 
 import os
-from flask import Flask, send_file, send_from_directory, render_template
+from flask import Flask, send_file, send_from_directory, render_template, redirect
 
 import pandas as pd
 
@@ -70,6 +70,10 @@ app.index_string = """<!DOCTYPE html>
         </footer>
     </body>
 </html>"""
+
+@app.server.route('/database')
+def redirect_to_knowledgebase():
+    return redirect('/knowledgebase')
 
 NAVBAR = dbc.Navbar(
     children=[
