@@ -4,6 +4,7 @@ from flask_caching import Cache
 import pandas as pd
 import os
 import logging
+import uuid
 
 app = dash.Dash(__name__, suppress_callback_exceptions=True)
 server = app.server
@@ -17,6 +18,7 @@ memory_cache.init_app(app.server)
 
 def database_key_generator(*args, **kwargs):
     """Generates a key based on the file's mtime."""
+    logging.info("Generating Key for Database Summary File")
     file_path = "database/summary.tsv"
     
     # Get the modification timestamp (seconds since epoch)
@@ -24,7 +26,8 @@ def database_key_generator(*args, **kwargs):
         mtime = os.path.getmtime(file_path)
     except FileNotFoundError:
         # If the file is missing, use a fixed key to force re-check
-        return "database-not-found" 
+        logging.error("Database Summary File Not Found for Key Generation")
+        return f"database-not-found-{uuid.uuid4()}"
 
     # Key = function name + mtime 
     # (We include the function name to avoid collisions with other functions)
