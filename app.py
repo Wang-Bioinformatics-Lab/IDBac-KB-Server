@@ -86,7 +86,7 @@ NAVBAR = dbc.Navbar(
                 dbc.Button(
                     "Sign Up",
                     color="primary",
-                    href="https://gnps2.org/user/signup",
+                    href="https://forms.gle/Zm6ZkevcKQ3mRiBt9",
                     style={"padding-left": "30px", "padding-right": "30px", "margin-right": "30px"},
                     className="button-blue"
                 )
@@ -152,7 +152,7 @@ def update_table_server_side(search, page_current, page_size, sort_by, filter_qu
     if page_current is None:
         page_current = 0
 
-    # --- Manual Filtering Example (Simple) ---
+    # --- Manual Filtering ---
     # Simply a 'contains'
     if filter_query and filter_query.strip():
         filtering_expressions = filter_query.split(' && ')

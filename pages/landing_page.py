@@ -82,13 +82,17 @@ CTA = dbc.Col(
         [
             dbc.Col(
                 [
-                    html.P(
-                        [
-                            html.A("Before signing up, get a token here.", href="https://wang-bioinformatics-lab.github.io/GNPS2_Documentation/idbac-request-an-account/", className="link")
-                        ],
-                    ),
+                    # html.P(
+                    #     [
+                    #         html.A("Before signing up, get a token here.", href="https://wang-bioinformatics-lab.github.io/GNPS2_Documentation/idbac-request-an-account/", className="link")
+                    #     ],
+                    # ),
+                    # dbc.Button(
+                    #     "Sign Up Now", color="primary", className="m-2 button-fixed button-blue", href="https://gnps2.org/user/signup", style={"padding-left": "30px", 
+                    #                                                                                                                            "padding-right": "30px"}
+                    # ),
                     dbc.Button(
-                        "Sign Up Now", color="primary", className="m-2 button-fixed button-blue", href="https://gnps2.org/user/signup", style={"padding-left": "30px", 
+                        "Sign Up Now", color="primary", className="m-2 button-fixed button-blue", href="https://forms.gle/Zm6ZkevcKQ3mRiBt9", style={"padding-left": "30px", 
                                                                                                                                                "padding-right": "30px"}
                     ),
                 ],
