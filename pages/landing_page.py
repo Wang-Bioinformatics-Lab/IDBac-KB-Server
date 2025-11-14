@@ -54,7 +54,7 @@ BUTTONS = dbc.Col(
             dbc.Col(
                 [
                     dbc.Button(
-                        "IDBac introduction & video tutorials", color="primary", className="m-2 button-fixed button-blue", href="https://sites.google.com/uic.edu/idbac-documentation/"
+                        "IDBac Introduction & Video Tutorials", color="primary", className="m-2 button-fixed button-blue", href="https://sites.google.com/uic.edu/idbac-documentation/"
                     ), 
                     html.P(text_under_button1, className="grey-box"),
                 ],
