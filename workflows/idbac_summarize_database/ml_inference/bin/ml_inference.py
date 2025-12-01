@@ -14,6 +14,7 @@ trans = transforms.Compose([
     SelectTopKPeaks(150),
     BinarizeIntensity(),  # *************
     NormalizeIntensity(),
+    PadToLength(150, padding_value=-1.0),
 ])
 
 def run_inference(ml_data_directory: Path, output_file: Path, session: ort.InferenceSession):
