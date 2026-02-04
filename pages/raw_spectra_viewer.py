@@ -27,7 +27,6 @@ from typing import List
 
 
 from data_loader import load_database
-DATABASE = load_database(None)[0]
 
 
 dev_mode = False
@@ -138,10 +137,12 @@ def update_raw_viewer(database_id, search):
     if database_id is None and search is not None:
         database_id = search.split('=')[-1]
 
-    if DATABASE is None:
+    database = load_database(None)[0]
+
+    if database is None:
         return []
 
-    data_table = pd.DataFrame(DATABASE)
+    data_table = pd.DataFrame(database)
 
     if database_id is None:
         database_id = data_table.iloc[0]["database_id"]

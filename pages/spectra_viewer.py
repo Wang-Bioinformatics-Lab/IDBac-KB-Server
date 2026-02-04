@@ -24,7 +24,6 @@ from dash import html, register_page
 from utils import convert_to_mzml
 
 from data_loader import load_database
-DATABASE = load_database(None)[0]
 
 dev_mode = False
 if not os.path.isdir('/app'):
@@ -118,10 +117,11 @@ def _get_processed_spectrum(database_id:str)->dict:
     prevent_initial_call=False
 )
 def update_pagination_max(active_page):
-    if DATABASE is None:
+    database = load_database(None)[0]
+    if database is None:
         return 0
     # Calculate total pages based on the data table size
-    total_items = len(DATABASE)
+    total_items = len(database)
     return (total_items + PAGE_SIZE - 1) // PAGE_SIZE
 
 def format_spectrum(spectrum: dict) -> dict:
@@ -190,11 +190,11 @@ def estimate_convexity(spectrum: dict, rescale:bool=False) -> tuple:
     prevent_initial_call=False
 )
 def update_spectra_display(active_page, n_clicks, search_id):
-    if DATABASE is None:
+    database = load_database(None)[0]
+    if database is None:
         return [], 1
 
-    data_table = pd.DataFrame(DATABASE)
-
+    data_table = pd.DataFrame(database)
     # Determine if this callback was triggered by the search button
     if ctx.triggered_id == "search-button" and search_id:
         # Find the index of the searched ID

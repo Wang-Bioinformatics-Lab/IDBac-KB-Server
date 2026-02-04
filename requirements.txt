@@ -8,6 +8,7 @@ requests_cache
 tqdm
 Werkzeug==2.2.2
 Flask-Caching
+redis
 dash==2.18.2
 dash-bootstrap-components
 dash-core-components

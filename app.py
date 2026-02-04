@@ -100,8 +100,6 @@ NAVBAR = dbc.Navbar(
     sticky="top",
 )
 
-DATABASE = load_database(None)[0]
-
 # Container should be full width
 app.layout = dbc.Container([ 
     NAVBAR,
@@ -144,10 +142,10 @@ def last_updated(search):
         Input('displaytable', 'hidden_columns'),
         # ------------------------------------
     ],
-    prevent_initial_call=True
+    prevent_initial_call=False
 )
 def update_table_server_side(search, page_current, page_size, sort_by, filter_query, columns, currently_hidden_cols):
-    df = pd.DataFrame(DATABASE)
+    df = pd.DataFrame(load_database(None)[0])
 
     if page_current is None:
         page_current = 0
@@ -281,7 +279,7 @@ def update_additional_data(table_data, table_selected):
     database_id = selected_row["database_id"]
 
     # Get the row in the dataframe
-    df = pd.read_csv("database/summary.tsv", sep="\t")
+    df = pd.DataFrame(load_database(None)[0])
     selected_row = df[df["database_id"] == database_id]
     data = selected_row.to_dict('records')[0]
 

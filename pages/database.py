@@ -16,8 +16,6 @@ from dash import html, register_page  #, callback # If you need callbacks, impor
 
 from data_loader import load_database
 
-DATABASE = load_database(None)[0]
-
 # from app import server
 # memory_cache = Cache(config={
 #     'CACHE_TYPE': 'simple', 
@@ -193,9 +191,10 @@ def update_view_raw_link(selected_rows, table_data):
     prevent_initial_call=True
 )
 def download_table_as_csv(n_clicks):
-    if not DATABASE:
+    database = pd.DataFrame(load_database(None)[0])
+    if database is None or database.empty:
         return dash.no_update
-    df = pd.DataFrame(DATABASE)
+    df = pd.DataFrame(database)
     return dcc.send_data_frame(df.to_csv, "IDBac_KB_Spectra_List.csv", index=False)
 
 
@@ -439,8 +438,9 @@ def update_dynamic_pie_chart(selected_taxonomy):
     count_16S = 0
     number_of_database_entries = ""
     percent_16S = 0.0
-    if DATABASE is not None:
-        dynamic_summary_df = pd.DataFrame(DATABASE)
+    database = pd.DataFrame(load_database(None)[0])
+    if database is not None:
+        dynamic_summary_df = pd.DataFrame(database)
 
         dynamic_summary_df[selected_taxonomy] = dynamic_summary_df[selected_taxonomy].fillna("No Taxonomy")
         

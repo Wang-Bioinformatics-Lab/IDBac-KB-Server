@@ -28,7 +28,6 @@ import logging
 from typing import Tuple
 
 from data_loader import load_database
-DATABASE = load_database(None)[0]
 
 dev_mode = False
 if not os.path.isdir('/app'):
@@ -570,11 +569,13 @@ def update_input_options(search_type, data):
     Returns:
         list: The options for the input dropdowns.
     """
+    database = load_database(None)[0]
+
     if data is None:
-        data = DATABASE
+        data = database
     else:
         # Concat the data 
-        data = data + DATABASE
+        data = data + database
     if data is None:
         return [], []
 
