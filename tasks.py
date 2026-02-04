@@ -90,6 +90,12 @@ def task_summarize_depositions():
                 # Print full exception (without stacktrace)
                 print(traceback.format_exc(), file=sys.stderr, flush=True)
 
+            # Add default licensing information if missing
+            if "License" not in entry:
+                entry["License"] = "CC-BY-NC 4.0"
+            if "Data Source" not in entry:
+                entry["Data Source"] = "IDBac Library Spectrum"
+
             # Drop all the peaks to save memory
             entry.pop("spectrum", None)
 

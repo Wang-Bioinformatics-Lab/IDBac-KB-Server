@@ -196,14 +196,14 @@ def update_table_server_side(search, page_current, page_size, sort_by, filter_qu
 
     # 6. Define Columns (as before, but using the filtered/sorted df)
     if columns is not None and len(columns) > 0:
-        currently_hidden_cols = set(currently_hidden_cols)
-        shown_columns = set([col['name'] for col in columns if col['name'] not in currently_hidden_cols])
+        shown_columns = [col['name'] for col in columns if col['name'] not in currently_hidden_cols]
     else:
-        shown_columns = set(["Strain name", "Culture Collection", "PI", "genus", "species", "Isolate Source",])
-    shown_columns = list(set(df.columns) & shown_columns)
-    hidden_columns = list(set(df.columns) - set(shown_columns))
+        shown_columns = ["Strain name", "Culture Collection", "PI", "genus", "species", "Isolate Source", "License", "Data Source"]
+    
+    shown_columns = [col for col in shown_columns if col in df.columns]
+    hidden_columns = [col for col in df.columns if col not in shown_columns]
 
-    columns = [{"name": i, "id": i, "hideable": True} for i in df.columns]
+    columns = [{"name": i, "id": i, "hideable": True} for i in shown_columns + hidden_columns]
 
     # 7. Return the data for the current page, column definitions, hidden columns, and page count
     return [
