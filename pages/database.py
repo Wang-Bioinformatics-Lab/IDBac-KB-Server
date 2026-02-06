@@ -377,6 +377,8 @@ CONTRIBUTORS_DASHBOARD = [
             html.H5("Robert Koch Institute (RKI) Database Citation"),
             html.A('Lasch, P., Beyer, W., Bosch, A. et al. A MALDI-ToF mass spectrometry database for identification and classification of highly pathogenic bacteria. Sci Data 12, 187 (2025).',
                    href="https://doi.org/10.1038/s41597-025-04504-z"),
+            html.Br(),
+            html.Br(),
             html.A('Lasch, P.; Stämmler, M.; Schneider, A. Version 4.2 (20230306) of the MALDI-ToF Mass Spectrometry Database for Identification and Classification of Highly Pathogenic Microorganisms from the Robert Koch-Institute (RKI), 2023.',
                     href='https://doi.org/10.5281/ZENODO.7702374'),
             html.Br(),
