@@ -17,6 +17,34 @@ TAGLINE = "A place to ID bacteria, organize strain collections & ask research qu
 text_under_button1 = "Learn more about the IDBac platform and access step-by-step video tutorials."
 text_under_button2 = "Explore the size and diversity of the IDBac Knowledgebase (IDBac-KB)."
 
+text_under_workflow1 = [
+    "Split a single .mzML file into separate files per strain. See the data preparation documentation ",
+    html.A(
+        "here",
+        href="https://sites.google.com/uic.edu/idbac-documentation/prepare-files-for-idbac",
+        className="link",
+    ),
+    " for more details.",
+]
+text_under_workflow2 = [
+    "Query the IDBac Knowledgebase and analyze your strains in the context of metadata and metabolite production. See the analysis documentation ",
+    html.A(
+        "here",
+        href="https://sites.google.com/uic.edu/idbac-documentation/analyze-data",
+        className="link",
+    ),
+    ".",
+]
+text_under_workflow3 = [
+    "Contribute to the IDBac Knowledgebase. See the deposition documentation ",
+    html.A(
+        "here",
+        href="https://sites.google.com/uic.edu/idbac-documentation/contribute-to-the-kb",
+        className="link",
+    ),
+    ".",
+]
+
 DATABASE_CONTENTS = dbc.Container(html.H3(
     id="database-contents-text",
     style={"color": "#d88000"},  # You can change the color here
@@ -76,6 +104,61 @@ BUTTONS = dbc.Col(
     width='80%'
 )
 
+WORKFLOWS = dbc.Col(
+    dbc.Row(
+        [
+            dbc.Col(
+                [
+                    dbc.Button(
+                        "Run IDBac Split MALDI Workflow",
+                        color="primary",
+                        className="m-2 button-fixed button-blue",
+                        href="https://gnps2.org/workflowinput?workflowname=idbac_split_maldi_workflow",
+                    ),
+                    html.P(
+                        text_under_workflow1,
+                        className="grey-box",
+                    ),
+                ],
+                xs=12, sm=12, md=4, lg=4, xl=4,
+            ),
+            dbc.Col(
+                [
+                    dbc.Button(
+                        "Run IDBac Analysis Workflow",
+                        color="primary",
+                        className="m-2 button-fixed button-blue",
+                        href="https://gnps2.org/workflowinput?workflowname=idbac_analysis_workflow",
+                    ),
+                    html.P(
+                        text_under_workflow2,
+                        className="grey-box",
+                    ),
+                ],
+                xs=12, sm=12, md=4, lg=4, xl=4,
+            ),
+            dbc.Col(
+                [
+                    dbc.Button(
+                        "Run IDBac Deposition Workflow",
+                        color="primary",
+                        className="m-2 button-fixed button-blue",
+                        href="https://gnps2.org/workflowinput?workflowname=idbacdeposition_workflow",
+                    ),
+                    html.P(
+                        text_under_workflow3,
+                        className="grey-box",
+                    ),
+                ],
+                xs=12, sm=12, md=4, lg=4, xl=4,
+            ),
+        ],
+        justify="center",
+        className="button-container",
+    ),
+    width="80%",
+)
+
 # Define the Call-To-Action (CTA) section
 CTA = dbc.Col(
         dbc.Row(
@@ -113,6 +196,13 @@ BODY = dbc.Container(
                 BUTTONS,
             ]
         ),
+        html.Hr(style={"width": "75%", "margin": "auto"}),
+        html.H4("IDBac Workflows", className="text-center", style={"padding-top": "20px"}),
+        dbc.CardBody(
+            [
+                WORKFLOWS,
+            ]
+        ),
         dbc.CardBody(
             [
                 CTA,
@@ -132,7 +222,6 @@ def layout(**kwargs):
             DATABASE_CONTENTS,
             html.Div(className="subheader-image"),
             html.Br(),
-            html.Hr(style={"width": "60%", "margin": "auto"}),
             html.Div(
                 children=[
                     BODY
