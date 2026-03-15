@@ -75,6 +75,13 @@ app.index_string = """<!DOCTYPE html>
 def redirect_to_knowledgebase():
     return redirect('/knowledgebase')
 
+@app.server.route('/MSMSFileGenerator')
+def msms_metadata_generator():
+    return send_from_directory(
+        os.path.join(app.server.root_path, 'pages', 'utilities'),
+        'ms_ms_association_sheet_generator.html'
+    )
+
 NAVBAR = dbc.Navbar(
     children=[
         dbc.NavbarBrand(

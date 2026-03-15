@@ -1,0 +1,1249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MS/MS Association Sheet Generator – IDBac-KB</title>
+
+  <!-- Bootstrap 5 (matches Dash Bootstrap Components styling used elsewhere) -->
+  <link
+    href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
+    rel="stylesheet"
+  />
+
+  <!-- Pyodide -->
+  <script src="https://cdn.jsdelivr.net/pyodide/v0.25.1/full/pyodide.js"></script>
+
+  <style>
+    /* ── IDBac colour tokens ─────────────────────────────────────── */
+    :root {
+      --idbac-navy:   #2a3f5f;
+      --idbac-orange: #d88000;
+      --idbac-grey:   #e9e9e9;
+      --idbac-text:   #3a3a3a;
+    }
+
+    body { background-color: #f8f9fa; color: var(--idbac-text); }
+
+    /* Navbar (aligned with landing/database pages) */
+    .navbar-idbac {
+      background-color: #f8f9fa;
+      border-bottom: none;
+    }
+    .navbar-idbac .navbar-brand {
+      margin-right: 0;
+    }
+    .navbar-logo {
+      width: 240px;
+      max-width: 52vw;
+      height: auto;
+      display: block;
+      padding-left: 15px;
+    }
+    .navbar-signup-btn {
+      background-color: #156082;
+      color: #ffffff;
+      border: 1px solid #6f6f6f;
+      border-radius: 1px;
+      padding-left: 30px;
+      padding-right: 30px;
+      margin-right: 30px;
+    }
+    .navbar-signup-btn:hover,
+    .navbar-signup-btn:focus {
+      background-color: #1a7ca1;
+      border-color: #8f8f8f;
+      color: #ffffff;
+    }
+
+    /* Cards */
+    .card-header {
+      background-color: var(--idbac-grey);
+      color: var(--idbac-text);
+    }
+    .card-header h5 { margin-bottom: 0; }
+
+    /* Drop-zone */
+    #drop-zone {
+      border: 2px dashed #adb5bd;
+      border-radius: 8px;
+      padding: 48px 24px;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color 0.2s, background-color 0.2s;
+      user-select: none;
+    }
+    #drop-zone.dragover,
+    #drop-zone:hover {
+      border-color: var(--idbac-navy);
+      background-color: #eaf0f9;
+    }
+
+    /* File list */
+    #file-list {
+      list-style: disc;
+      padding-left: 1.4rem;
+      max-height: 220px;
+      overflow-y: auto;
+      font-size: 0.88rem;
+    }
+    #file-list li.ms1-item  { color: var(--idbac-navy);   font-weight: 600; }
+    #file-list li.msms-item { color: var(--idbac-orange); }
+    #file-list li.unknown-item { color: #6c757d; font-style: italic; }
+
+    /* Pyodide status banner */
+    #pyodide-status { font-size: 0.88rem; transition: opacity 0.5s; }
+
+    /* Classification progress */
+    #classification-progress-container { display: none; }
+    #classification-progress-bar { transition: width 0.2s ease; }
+
+    /* Association board */
+    .association-board {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 12px;
+    }
+    .association-section {
+      border: 1px solid #d9dfe8;
+      border-radius: 10px;
+      background: #fff;
+      min-height: 180px;
+      display: flex;
+      flex-direction: column;
+    }
+    .association-section.unmatched {
+      border-color: #f0ad4e;
+      background: #fffaf2;
+    }
+    .association-section-header {
+      font-size: 0.9rem;
+      font-weight: 700;
+      padding: 10px 12px;
+      border-bottom: 1px solid #eceff4;
+      color: var(--idbac-navy);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      overflow-wrap: anywhere;
+    }
+    .association-section.unmatched .association-section-header {
+      color: #9a6700;
+      border-bottom-color: #f6d8a3;
+    }
+    .chip-dropzone {
+      min-height: 120px;
+      padding: 10px;
+      display: flex;
+      flex-wrap: wrap;
+      align-content: flex-start;
+      gap: 8px;
+      border-radius: 0 0 10px 10px;
+      transition: background-color 0.15s ease, box-shadow 0.15s ease;
+    }
+    .chip-dropzone.dragover {
+      background-color: #eef4ff;
+      box-shadow: inset 0 0 0 2px #9bb8f0;
+    }
+    .msms-chip {
+      cursor: grab;
+      user-select: none;
+      border: 1px solid #f1c27d;
+      border-radius: 999px;
+      padding: 4px 10px;
+      font-size: 0.8rem;
+      color: #8a4b00;
+      background: #fff5e8;
+      max-width: 100%;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .msms-chip:active { cursor: grabbing; }
+    .msms-chip.empty-hint {
+      border-style: dashed;
+      color: #6c757d;
+      background: #f8f9fa;
+      cursor: default;
+      font-style: italic;
+    }
+
+    /* Check result chip states */
+    .msms-chip.check-pass {
+      background-color: #d1e7dd;
+      border-color: #8cc9a6;
+      color: #145c35;
+    }
+    .msms-chip.check-fail {
+      background-color: #f8d7da;
+      border-color: #e6a4ac;
+      color: #7a1f2a;
+      cursor: help;
+    }
+
+    /* Checks report accordion */
+    #checks-report .accordion-button { font-size: 0.9rem; padding: 0.5rem 1rem; }
+    .check-detail-pass { color: #198754; font-weight: 600; }
+    .check-detail-fail { color: #dc3545; font-weight: 600; }
+  </style>
+</head>
+
+<body>
+
+<!-- ── Navbar ──────────────────────────────────────────────────────── -->
+<nav class="navbar navbar-expand-lg navbar-light navbar-idbac sticky-top">
+  <div class="container-fluid px-0">
+    <a class="navbar-brand" href="https://gnps2.org">
+      <img src="/assets/GNPS2xIDBac.png" alt="GNPS2 x IDBac" class="navbar-logo" />
+    </a>
+    <div class="ms-auto d-flex align-items-center">
+      <a class="btn btn-primary navbar-signup-btn" href="https://forms.gle/Zm6ZkevcKQ3mRiBt9">Sign Up</a>
+    </div>
+  </div>
+</nav>
+
+<!-- ── Page body ───────────────────────────────────────────────────── -->
+<div class="container-fluid px-4 py-3">
+
+  <!-- Pyodide status -->
+  <div id="pyodide-status" class="alert alert-info mb-3" role="alert">
+    ⏳ Loading Pyodide runtime… this may take a moment on first load.
+  </div>
+
+  <!-- ── Upload card ─────────────────────────────────────────────── -->
+  <div class="row mb-4">
+    <div class="col-12">
+      <div class="card shadow-sm">
+        <div class="card-header">
+          <h5>Upload mzML Files</h5>
+        </div>
+        <div class="card-body">
+
+          <!-- Drop-zone -->
+          <div id="drop-zone" onclick="document.getElementById('file-input').click()">
+            <p class="fs-5 mb-1">Drag &amp; drop <code>.mzML</code> files here</p>
+            <p class="text-muted mb-0">or click to browse</p>
+          </div>
+          <input type="file" id="file-input" multiple accept=".mzML,.mzml" style="display:none" />
+
+          <!-- File list -->
+          <div id="file-list-container" class="mt-3" style="display:none">
+            <div class="d-flex justify-content-between align-items-center mb-1">
+              <strong>
+                Selected:
+                <span id="ms1-count">0</span> MS1 &nbsp;/&nbsp;
+                <span id="msms-count">0</span> MS/MS
+                &nbsp;/&nbsp; <span id="unknown-count">0</span> Unknown
+                &nbsp;(<span id="file-count">0</span> total)
+              </strong>
+              <button class="btn btn-sm btn-outline-secondary" id="clear-btn">Clear all</button>
+            </div>
+            <div id="classification-progress-container" class="mb-2">
+              <div class="d-flex justify-content-between align-items-center small text-muted mb-1">
+                <span id="classification-progress-label">Classifying files…</span>
+                <span id="classification-progress-count">0 / 0</span>
+              </div>
+              <div class="progress" style="height: 8px;">
+                <div id="classification-progress-bar" class="progress-bar bg-info" role="progressbar"
+                     style="width: 0%" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"></div>
+              </div>
+            </div>
+            <ul id="file-list"></ul>
+            <small class="text-muted">
+              <span class="fw-bold" style="color:var(--idbac-navy)">Blue = MS1</span> &nbsp;|&nbsp;
+              <span class="fw-bold" style="color:var(--idbac-orange)">Orange = MS/MS</span>
+              &nbsp;|&nbsp; <span class="fw-bold text-muted">Gray = Unknown / mixed scans</span>
+              (classification is based on experiment content files should be exclusively MS1 scans or exclusively MS2 scans)
+            </small>
+          </div>
+
+          <!-- Generate button -->
+          <div class="d-flex justify-content-end mt-3">
+            <button id="generate-btn" class="btn btn-primary" disabled>
+              Guess Association Table Based on Filenames
+            </button>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Results card ────────────────────────────────────────────── -->
+  <div id="results-container" class="row mb-4" style="display:none">
+    <div class="col-12">
+      <div class="card shadow-sm">
+        <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+          <h5 class="mb-0">MS/MS Association Table</h5>
+          <div class="d-flex align-items-center gap-2 flex-wrap">
+            <label class="mb-0 small fw-semibold">m/z Tolerance (Da):</label>
+            <input type="number" id="mz-tolerance" value="0.5" min="0.01" step="0.1"
+                   style="width:80px" class="form-control form-control-sm" />
+            <button id="run-checks-btn" class="btn btn-sm btn-warning">Run Checks</button>
+            <button id="download-csv-btn" class="btn btn-sm btn-primary">Download CSV</button>
+            <button id="export-idbac-mzmls-btn" class="btn btn-sm btn-primary">Export .mzMLs for IDBac</button>
+          </div>
+        </div>
+        <div class="card-body">
+          <p id="results-summary" class="text-muted mb-3"></p>
+
+          <p class="small text-muted mb-2">
+            Drag MS/MS chips between sections to adjust matching. Each MS/MS file must live in one section.
+          </p>
+
+          <div id="association-board" class="association-board"></div>
+
+          <!-- Checks report -->
+          <div id="checks-report-container" class="mt-4" style="display:none">
+            <h6 class="mb-1">Validation Summary</h6>
+            <p id="checks-summary" class="text-muted small mb-2"></p>
+            <div class="accordion" id="checks-report"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /container-fluid -->
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+<script>
+// ── State ──────────────────────────────────────────────────────────────
+let pyodide             = null;
+let uploadedFiles       = [];   // File objects
+let tableData           = null;
+let associationState    = null; // { ms1ToMsms: {ms1:[msms...]}, unmatched:[msms...] }
+let checkResults        = null; // ms1_name → { msms: { msms_name → {pass, found, missing} } }
+let fileClassifications = {};   // filename → 'ms1' | 'msms' | 'unknown' | 'pending'
+let fileDiagnostics     = {};   // filename → classification/debug details
+let pendingFilesQueue   = [];   // Files added before pyodide+pyteomics finished loading
+let pyodideReady        = false;
+let classificationQueue = Promise.resolve();
+
+// ── Pyodide init ───────────────────────────────────────────────────────
+async function initPyodide() {
+  const banner = document.getElementById('pyodide-status');
+  try {
+    pyodide = await loadPyodide();
+    banner.textContent = '⏳ Loading packages (lxml, numpy, pyteomics, psims)…';
+    await pyodide.loadPackage(['lxml', 'numpy', 'micropip']);
+    await pyodide.runPythonAsync(`import micropip
+await micropip.install(['pyteomics', 'psims'])`);
+    pyodideReady = true;
+    banner.className = 'alert alert-success mb-3';
+    banner.textContent = '✓ Pyodide and pyteomics loaded.';
+    setTimeout(() => { banner.style.opacity = '0'; }, 3000);
+    setTimeout(() => { banner.style.display = 'none'; }, 3500);
+    await classifyPendingFiles();
+    updateGenerateButton();
+  } catch (err) {
+    banner.className = 'alert alert-danger mb-3';
+    banner.textContent = '✗ Failed to load Pyodide / pyteomics: ' + err.message;
+  }
+}
+initPyodide();
+
+// ── File input ─────────────────────────────────────────────────────────
+const fileInput = document.getElementById('file-input');
+const dropZone  = document.getElementById('drop-zone');
+
+fileInput.addEventListener('change', e => addFiles(Array.from(e.target.files)));
+
+dropZone.addEventListener('dragover',  e => { e.preventDefault(); dropZone.classList.add('dragover'); });
+dropZone.addEventListener('dragleave', ()  => dropZone.classList.remove('dragover'));
+dropZone.addEventListener('drop', e => {
+  e.preventDefault();
+  dropZone.classList.remove('dragover');
+  addFiles(Array.from(e.dataTransfer.files));
+});
+
+document.getElementById('clear-btn').addEventListener('click', () => {
+  // Remove files from Pyodide virtual FS
+  uploadedFiles.forEach(f => {
+    try { pyodide && pyodide.FS.unlink('/tmp/' + f.name); } catch (_) {}
+  });
+  uploadedFiles       = [];
+  fileClassifications = {};
+  fileDiagnostics     = {};
+  checkResults        = null;
+  tableData           = null;
+  associationState    = null;
+  pendingFilesQueue   = [];
+  pyodideReady        = pyodideReady;
+  fileInput.value     = '';
+  renderFileList();
+  updateGenerateButton();
+  document.getElementById('results-container').style.display = 'none';
+  document.getElementById('checks-report-container').style.display = 'none';
+  updateClassificationProgress();
+});
+
+async function addFiles(newFiles) {
+  const mzmlFiles     = newFiles.filter(f => f.name.toLowerCase().endsWith('.mzml'));
+  const existingNames = new Set(uploadedFiles.map(f => f.name));
+  const newUnique     = mzmlFiles.filter(f => !existingNames.has(f.name));
+  if (!newUnique.length) return;
+
+  // If pyteomics isn't ready yet, queue and wait
+  if (!pyodideReady) {
+    pendingFilesQueue.push(...newUnique);
+    newUnique.forEach(f => { fileClassifications[f.name] = 'pending'; });
+    uploadedFiles = uploadedFiles.concat(newUnique);
+    renderFileList();
+    updateGenerateButton();
+    updateClassificationProgress();
+    return;
+  }
+
+  // Mark incoming files as pending before reading
+  newUnique.forEach(f => { fileClassifications[f.name] = 'pending'; });
+  uploadedFiles = uploadedFiles.concat(newUnique);
+  renderFileList();
+  updateGenerateButton();
+  updateClassificationProgress();
+
+  await queueClassification(newUnique);
+}
+
+async function classifyPendingFiles() {
+  const pendingByName = new Set(pendingFilesQueue.map(f => f.name));
+  const pendingFiles = uploadedFiles.filter(f => (
+    fileClassifications[f.name] === 'pending' || pendingByName.has(f.name)
+  ));
+  pendingFilesQueue = [];
+  if (!pendingFiles.length) {
+    updateClassificationProgress();
+    return;
+  }
+  await queueClassification(pendingFiles);
+}
+
+function queueClassification(files) {
+  const queuedFiles = [...files];
+  classificationQueue = classificationQueue
+    .catch(() => {})
+    .then(() => classifySpecificFiles(queuedFiles));
+  return classificationQueue;
+}
+
+async function classifySpecificFiles(files) {
+  for (const file of files) {
+    const bytes = new Uint8Array(await file.arrayBuffer());
+    pyodide.FS.writeFile('/tmp/' + file.name, bytes);
+    const diagnostic = await classifyMzMLPy(file.name);
+    fileDiagnostics[file.name] = diagnostic;
+    fileClassifications[file.name] = diagnostic.classification;
+    if (diagnostic.classification === 'unknown') {
+      console.warn('Unknown mzML classification', file.name, diagnostic);
+    } else {
+      console.debug('mzML classification', file.name, diagnostic);
+    }
+    renderFileList();
+    updateGenerateButton();
+    updateClassificationProgress();
+  }
+}
+
+function isMSMS(name) {
+  const cls = fileClassifications[name];
+  return cls === 'msms';
+}
+
+// ── mzML content classification via pyteomics ──────────────────────────
+
+/** Use pyteomics to classify files only when scans are uniformly MS1 or uniformly MS2. */
+async function classifyMzMLPy(filename) {
+  try {
+    const mzmlPath = JSON.stringify('/tmp/' + filename);
+    const resultJson = await pyodide.runPythonAsync(`
+import json
+from pyteomics import mzml
+
+levels = set()
+scans_seen = 0
+error = None
+
+try:
+  with mzml.read(${mzmlPath}) as reader:
+        for scan in reader:
+            scans_seen += 1
+            level = scan.get('ms level')
+            if level is not None:
+                try:
+                    level = int(level)
+                except Exception:
+                    level = str(level)
+
+            if level in (1, 2):
+                levels.add(level)
+            elif level is not None:
+                levels.add('other')
+
+            if len(levels) > 1:
+                break
+except Exception as exc:
+    error = repr(exc)
+
+classification = 'ms1' if levels == {1} else ('msms' if levels == {2} else 'unknown')
+
+json.dumps({
+    'classification': classification,
+    'levels_seen': sorted([str(item) for item in levels]),
+    'scans_seen': scans_seen,
+    'error': error,
+})
+`);
+    return JSON.parse(resultJson);
+  } catch (error) {
+    return {
+      classification: 'unknown',
+      levels_seen: [],
+      scans_seen: 0,
+      error: String(error),
+    };
+  }
+}
+
+function renderFileList() {
+  const list      = document.getElementById('file-list');
+  const container = document.getElementById('file-list-container');
+
+  list.innerHTML = '';
+
+  const sorted   = [...uploadedFiles].sort((a, b) => a.name.localeCompare(b.name));
+  const pending  = sorted.filter(f => fileClassifications[f.name] === 'pending');
+  const ms1Files = sorted.filter(f => fileClassifications[f.name] === 'ms1');
+  const msmsFiles= sorted.filter(f => fileClassifications[f.name] === 'msms');
+  const unknownFiles = sorted.filter(f => fileClassifications[f.name] === 'unknown');
+
+  [...ms1Files, ...msmsFiles, ...unknownFiles, ...pending].forEach(f => {
+    const li  = document.createElement('li');
+    const cls = fileClassifications[f.name];
+
+    if (cls === 'pending') {
+      li.innerHTML = `<span class="spinner-border spinner-border-sm me-1" role="status"
+                           style="width:0.75em;height:0.75em;border-width:0.1em"></span>${f.name}`;
+      li.className = 'text-muted fst-italic';
+    } else if (cls === 'msms') {
+      li.textContent = f.name;
+      li.className   = 'msms-item';
+      if (fileDiagnostics[f.name]) {
+        li.title = `levels=${fileDiagnostics[f.name].levels_seen.join(', ')} scans=${fileDiagnostics[f.name].scans_seen}`;
+      }
+    } else if (cls === 'unknown') {
+      li.textContent = f.name;
+      li.className   = 'unknown-item';
+      if (fileDiagnostics[f.name]) {
+        const diag = fileDiagnostics[f.name];
+        li.title = diag.error
+          ? `Unknown: ${diag.error}`
+          : `Unknown: levels=${diag.levels_seen.join(', ') || 'none'} scans=${diag.scans_seen}`;
+      }
+    } else {
+      li.textContent = f.name;
+      li.className   = 'ms1-item';
+      if (fileDiagnostics[f.name]) {
+        li.title = `levels=${fileDiagnostics[f.name].levels_seen.join(', ')} scans=${fileDiagnostics[f.name].scans_seen}`;
+      }
+    }
+    list.appendChild(li);
+  });
+
+  document.getElementById('ms1-count').textContent  = ms1Files.length;
+  document.getElementById('msms-count').textContent = msmsFiles.length;
+  document.getElementById('unknown-count').textContent = unknownFiles.length;
+  document.getElementById('file-count').textContent = uploadedFiles.length;
+  container.style.display = uploadedFiles.length > 0 ? 'block' : 'none';
+  updateClassificationProgress();
+}
+
+function updateClassificationProgress() {
+  const container = document.getElementById('classification-progress-container');
+  const bar       = document.getElementById('classification-progress-bar');
+  const label     = document.getElementById('classification-progress-label');
+  const count     = document.getElementById('classification-progress-count');
+
+  const total = uploadedFiles.length;
+  const completed = uploadedFiles.filter(f => fileClassifications[f.name] && fileClassifications[f.name] !== 'pending').length;
+  const pending = total - completed;
+
+  if (total === 0) {
+    container.style.display = 'none';
+    bar.style.width = '0%';
+    bar.setAttribute('aria-valuenow', '0');
+    count.textContent = '0 / 0';
+    return;
+  }
+
+  const percent = Math.round((completed / total) * 100);
+  container.style.display = pending > 0 ? 'block' : 'none';
+  bar.style.width = `${percent}%`;
+  bar.setAttribute('aria-valuenow', String(percent));
+  count.textContent = `${completed} / ${total}`;
+  label.textContent = pending > 0 ? 'Classifying files…' : 'Classification complete';
+}
+
+function updateGenerateButton() {
+  const hasPending = uploadedFiles.some(f => fileClassifications[f.name] === 'pending');
+  document.getElementById('generate-btn').disabled =
+    !(pyodideReady && uploadedFiles.length > 0 && !hasPending);
+}
+
+// ── Generate ───────────────────────────────────────────────────────────
+document.getElementById('generate-btn').addEventListener('click', async () => {
+  const btn = document.getElementById('generate-btn');
+  btn.disabled = true;
+  btn.textContent = 'Working…';
+
+  try {
+    tableData = await runPyodideMatching();
+    associationState = buildAssociationStateFromTable(tableData);
+    renderAssociationBoard();
+    updateResultsSummary();
+    const container = document.getElementById('results-container');
+    container.style.display = 'block';
+    container.scrollIntoView({ behavior: 'smooth' });
+  } catch (err) {
+    alert('Error: ' + err.message);
+    console.error(err);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Guess Association Table Based on Filenames';
+  }
+});
+
+// ── Pyodide fuzzy-matching logic ───────────────────────────────────────
+async function runPyodideMatching() {
+  // Matching is filename-based only; classification only decides which pool a file belongs to.
+  const ms1Names  = uploadedFiles.filter(f => fileClassifications[f.name] === 'ms1').map(f => f.name).sort();
+  const msmsNames = uploadedFiles.filter(f => fileClassifications[f.name] === 'msms').map(f => f.name).sort();
+
+  pyodide.globals.set('_ms1_files_input',  pyodide.toPy(ms1Names));
+  pyodide.globals.set('_msms_files_input', pyodide.toPy(msmsNames));
+
+  const jsonStr = await pyodide.runPythonAsync(`
+import json
+from difflib import SequenceMatcher
+import re
+
+# Classifications come from JavaScript; matching itself is filename-based only.
+ms1_files  = list(_ms1_files_input)
+msms_files = list(_msms_files_input)
+
+def stem(name):
+    """Filename without .mzML extension (case-insensitive strip)."""
+    if name.lower().endswith('.mzml'):
+        return name[:-5]
+    return name
+
+def similarity(a, b):
+    """SequenceMatcher ratio between two strings (case-insensitive)."""
+    return SequenceMatcher(None, a.lower(), b.lower()).ratio()
+
+def msms_parent_stem(name):
+  """Best-effort parent stem guess from an MS/MS filename."""
+  value = stem(name)
+  value = re.sub(r'_MSMS$', '', value, flags=re.IGNORECASE)
+  value = re.sub(r'_[A-Za-z]+\d+$', '', value)
+  return value
+
+ms1_stem_to_name = {stem(ms1).lower(): ms1 for ms1 in ms1_files}
+
+# ── Match each MSMS → best MS1 ──────────────────────────────────────
+def best_ms1_for(msms_name):
+    """
+  Score candidates using filename heuristics only:
+  1. Exact parent stem derived from suffix stripping.
+  2. Exact prefix match on the full MS/MS stem.
+  3. Conservative SequenceMatcher fallback.
+    """
+    msms_s = stem(msms_name).lower()
+    parent_s = msms_parent_stem(msms_name).lower()
+
+    if parent_s in ms1_stem_to_name:
+        return ms1_stem_to_name[parent_s], 1.0
+
+    best, best_score = None, -1.0
+
+    for ms1 in ms1_files:
+      ms1_s = stem(ms1).lower()
+      if msms_s.startswith(ms1_s):
+        score = 0.9 + len(ms1_s) / max(len(msms_s), 1) * 0.09
+      else:
+        score = similarity(parent_s, ms1_s) * 0.75
+
+      if score > best_score:
+        best_score, best = score, ms1
+
+    return best, best_score
+
+# ── Group ──────────────────────────────────────────────────────────
+groups        = {ms1: [] for ms1 in ms1_files}
+unmatched     = []
+match_scores  = {}   # msms_name -> (ms1_name, score)
+
+for msms in msms_files:
+  match = best_ms1_for(msms)
+  if not match:
+    unmatched.append(msms)
+    continue
+
+  ms1, score = match
+  match_scores[msms] = (ms1, round(score, 4))
+  if ms1 and score >= 0.75:
+      groups[ms1].append(msms)
+  else:
+      unmatched.append(msms)
+
+# ── Build row data ─────────────────────────────────────────────────
+max_msms = max((len(v) for v in groups.values()), default=0)
+rows = []
+for ms1 in ms1_files:
+    row = [ms1] + groups[ms1] + [''] * (max_msms - len(groups[ms1]))
+    rows.append(row)
+
+result = {
+    'rows':          rows,
+    'max_msms':      max_msms,
+    'ms1_count':     len(ms1_files),
+    'msms_count':    len(msms_files),
+    'unmatched':     unmatched,
+    'match_scores':  {k: list(v) for k, v in match_scores.items()},
+}
+json.dumps(result)
+`);
+
+  return JSON.parse(jsonStr);
+}
+
+// ── Association board helpers ─────────────────────────────────────────
+function buildAssociationStateFromTable(data) {
+  const ms1ToMsms = {};
+  data.rows.forEach(row => {
+    ms1ToMsms[row[0]] = row.slice(1).filter(Boolean);
+  });
+  return normalizeAssociationState({
+    ms1ToMsms,
+    unmatched: [...(data.unmatched || [])],
+  });
+}
+
+function normalizeAssociationState(state) {
+  const ms1ToMsms = {};
+  const seen = new Set();
+
+  Object.entries(state.ms1ToMsms || {}).forEach(([ms1, names]) => {
+    ms1ToMsms[ms1] = [];
+    (names || []).forEach(name => {
+      if (!name || seen.has(name)) return;
+      seen.add(name);
+      ms1ToMsms[ms1].push(name);
+    });
+    ms1ToMsms[ms1].sort();
+  });
+
+  const unmatched = [];
+  (state.unmatched || []).forEach(name => {
+    if (!name || seen.has(name)) return;
+    seen.add(name);
+    unmatched.push(name);
+  });
+  unmatched.sort();
+
+  return { ms1ToMsms, unmatched };
+}
+
+function getCurrentTableData() {
+  if (!associationState) return null;
+
+  const ms1Names = Object.keys(associationState.ms1ToMsms).sort();
+  const maxMsms = ms1Names.reduce((max, ms1) => {
+    const n = (associationState.ms1ToMsms[ms1] || []).length;
+    return Math.max(max, n);
+  }, 0);
+
+  const rows = ms1Names.map(ms1 => {
+    const values = [...(associationState.ms1ToMsms[ms1] || [])].sort();
+    return [ms1, ...values, ...Array(maxMsms - values.length).fill('')];
+  });
+
+  return {
+    rows,
+    max_msms: maxMsms,
+    ms1_count: ms1Names.length,
+    msms_count: rows.reduce((sum, row) => sum + row.slice(1).filter(Boolean).length, 0) + associationState.unmatched.length,
+    unmatched: [...associationState.unmatched],
+    match_scores: tableData?.match_scores || {},
+  };
+}
+
+function updateResultsSummary() {
+  const data = getCurrentTableData();
+  const summary = document.getElementById('results-summary');
+  if (!data) {
+    summary.textContent = '';
+    return;
+  }
+  summary.textContent =
+    `${data.ms1_count} MS1 section(s)  ·  ${data.msms_count} total MS/MS file(s). ` +
+    `${data.msms_count - data.unmatched.length} matched, ${data.unmatched.length} unmatched.`;
+}
+
+function renderAssociationBoard() {
+  const board = document.getElementById('association-board');
+  board.innerHTML = '';
+
+  if (!associationState) return;
+
+  const ms1Names = Object.keys(associationState.ms1ToMsms).sort();
+  ms1Names.forEach(ms1 => {
+    board.appendChild(buildSectionElement(ms1, associationState.ms1ToMsms[ms1] || [], false));
+  });
+  board.appendChild(buildSectionElement('__UNMATCHED__', associationState.unmatched || [], true));
+
+  applyChipCheckHighlighting();
+}
+
+function buildSectionElement(sectionKey, names, isUnmatched) {
+  const section = document.createElement('section');
+  section.className = `association-section${isUnmatched ? ' unmatched' : ''}`;
+
+  const header = document.createElement('div');
+  header.className = 'association-section-header';
+  header.innerHTML = isUnmatched
+    ? `<span>Unmatched MS/MS Files</span><span class="badge text-bg-warning">${names.length}</span>`
+    : `<span>${escapeHtml(sectionKey)}</span><span class="badge text-bg-secondary">${names.length}</span>`;
+
+  const dropzone = document.createElement('div');
+  dropzone.className = 'chip-dropzone';
+  dropzone.dataset.targetSection = sectionKey;
+
+  dropzone.addEventListener('dragover', e => {
+    e.preventDefault();
+    dropzone.classList.add('dragover');
+  });
+  dropzone.addEventListener('dragleave', () => {
+    dropzone.classList.remove('dragover');
+  });
+  dropzone.addEventListener('drop', e => {
+    e.preventDefault();
+    dropzone.classList.remove('dragover');
+    const msmsName = e.dataTransfer.getData('text/plain');
+    if (!msmsName) return;
+    moveChipToSection(msmsName, sectionKey);
+  });
+
+  const sortedNames = [...names].sort();
+  if (!sortedNames.length) {
+    const empty = document.createElement('span');
+    empty.className = 'msms-chip empty-hint';
+    empty.textContent = 'Drop MS/MS chips here';
+    dropzone.appendChild(empty);
+  } else {
+    sortedNames.forEach(msmsName => {
+      const chip = document.createElement('span');
+      chip.className = 'msms-chip';
+      chip.draggable = true;
+      chip.dataset.msmsName = msmsName;
+      chip.textContent = msmsName;
+
+      const initialMatch = tableData?.match_scores?.[msmsName];
+      if (initialMatch) {
+        chip.title = `Initial match guess: ${initialMatch[0]} (score ${initialMatch[1]})`;
+      }
+
+      chip.addEventListener('dragstart', e => {
+        e.dataTransfer.setData('text/plain', msmsName);
+        e.dataTransfer.effectAllowed = 'move';
+      });
+
+      dropzone.appendChild(chip);
+    });
+  }
+
+  section.appendChild(header);
+  section.appendChild(dropzone);
+  return section;
+}
+
+function moveChipToSection(msmsName, targetSection) {
+  if (!associationState) return;
+
+  Object.keys(associationState.ms1ToMsms).forEach(ms1 => {
+    associationState.ms1ToMsms[ms1] = (associationState.ms1ToMsms[ms1] || []).filter(name => name !== msmsName);
+  });
+  associationState.unmatched = (associationState.unmatched || []).filter(name => name !== msmsName);
+
+  if (targetSection === '__UNMATCHED__') {
+    associationState.unmatched.push(msmsName);
+  } else {
+    if (!associationState.ms1ToMsms[targetSection]) associationState.ms1ToMsms[targetSection] = [];
+    associationState.ms1ToMsms[targetSection].push(msmsName);
+  }
+
+  associationState = normalizeAssociationState(associationState);
+  checkResults = null;
+  document.getElementById('checks-report-container').style.display = 'none';
+  updateResultsSummary();
+  renderAssociationBoard();
+}
+
+// ── Download CSV ───────────────────────────────────────────────────────
+document.getElementById('download-csv-btn').addEventListener('click', () => {
+  const data = getCurrentTableData();
+  if (!data) return;
+
+  const headers = ['MS1 Filename'];
+  for (let i = 1; i <= data.max_msms; i++) headers.push(`MS/MS Filename ${i}`);
+
+  const lines = [headers.map(csvEscape).join(',')];
+  data.rows.forEach(row => lines.push(row.map(csvEscape).join(',')));
+
+  const blob = new Blob([lines.join('\r\n')], { type: 'text/csv;charset=utf-8;' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href     = url;
+  a.download = 'msms_association.csv';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+});
+
+function csvEscape(val) {
+  if (val === null || val === undefined) return '""';
+  return '"' + String(val).replace(/"/g, '""') + '"';
+}
+
+// ── Export grouped mzML ZIP ───────────────────────────────────────────
+document.getElementById('export-idbac-mzmls-btn').addEventListener('click', async () => {
+  const data = getCurrentTableData();
+  if (!data) return;
+
+  const groups = {};
+  data.rows.forEach(row => {
+  const ms1Name = row[0];
+  if (!ms1Name) return;
+  groups[ms1Name] = row.slice(1).filter(Boolean);
+  });
+
+  const btn = document.getElementById('export-idbac-mzmls-btn');
+  btn.disabled = true;
+  btn.textContent = 'Exporting…';
+
+  try {
+  pyodide.globals.set('_export_groups', pyodide.toPy(groups));
+
+  const exportJson = await pyodide.runPythonAsync(`
+import base64
+import io
+import json
+import os
+import re
+import zipfile
+from pyteomics import mzml as pymzml
+from psims.mzml.writer import MzMLWriter
+
+groups = dict(_export_groups)
+
+def sanitize_filename(name):
+  clean = re.sub(r'[^A-Za-z0-9._-]+', '_', name)
+  clean = clean.strip('._-')
+  return clean or 'group'
+
+def write_group_mzml(ms1_name, msms_names):
+  spectra = []
+
+  def collect_scans(filename, fallback_ms_level):
+    with pymzml.MzML('/tmp/' + filename) as reader:
+      for scan in reader:
+        mz_values = scan.get('m/z array')
+        intensity_values = scan.get('intensity array')
+        if mz_values is None or intensity_values is None:
+          continue
+
+        ms_level = scan.get('ms level', fallback_ms_level)
+        try:
+          ms_level = int(ms_level)
+        except Exception:
+          ms_level = fallback_ms_level
+
+        try:
+          mz_array = mz_values.tolist()
+        except Exception:
+          mz_array = list(mz_values)
+
+        try:
+          intensity_array = intensity_values.tolist()
+        except Exception:
+          intensity_array = list(intensity_values)
+
+        spectra.append((ms_level, mz_array, intensity_array))
+
+  collect_scans(ms1_name, 1)
+  for msms_name in msms_names:
+    collect_scans(msms_name, 2)
+
+  output_bytes = io.BytesIO()
+  with MzMLWriter(output_bytes, close=False) as out_mzml:
+    out_mzml.controlled_vocabularies()
+    scan_counter = 1
+    with out_mzml.run(id='my_analysis'):
+      with out_mzml.spectrum_list(count=len(spectra)):
+        for ms_level, mz_array, intensity_array in spectra:
+          out_mzml.write_spectrum(
+            mz_array,
+            intensity_array,
+            id=f'scan={scan_counter}',
+            params=[
+              'MS1 Spectrum' if ms_level == 1 else 'MSn Spectrum',
+              {'ms level': ms_level},
+              {'total ion current': float(sum(intensity_array))},
+              {'instrument model': 'unknown'},
+            ],
+          )
+          scan_counter += 1
+
+  output_bytes.seek(0)
+  return output_bytes.read()
+
+zip_buffer = io.BytesIO()
+written_count = 0
+
+with zipfile.ZipFile(zip_buffer, mode='w', compression=zipfile.ZIP_DEFLATED) as zf:
+  for ms1_name in sorted(groups.keys(), key=lambda value: value.lower()):
+    msms_names = groups.get(ms1_name, [])
+    stem = os.path.splitext(ms1_name)[0]
+    output_name = sanitize_filename(stem) + '.mzML'
+    zf.writestr(output_name, write_group_mzml(ms1_name, msms_names))
+    written_count += 1
+
+zip_buffer.seek(0)
+json.dumps({
+  'count': written_count,
+  'zip_b64': base64.b64encode(zip_buffer.getvalue()).decode('ascii'),
+})
+`);
+
+  const exportResult = JSON.parse(exportJson);
+  const zipBytes = Uint8Array.from(atob(exportResult.zip_b64), c => c.charCodeAt(0));
+  const blob = new Blob([zipBytes], { type: 'application/zip' });
+  const url = URL.createObjectURL(blob);
+
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'idbac_grouped_mzMLs.zip';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  } catch (err) {
+  alert('Export error: ' + err.message);
+  console.error(err);
+  } finally {
+  btn.disabled = false;
+  btn.textContent = 'Export .mzMLs for IDBac';
+  }
+});
+
+// ── Run Checks ─────────────────────────────────────────────────────────
+document.getElementById('run-checks-btn').addEventListener('click', async () => {
+  const data = getCurrentTableData();
+  if (!data) return;
+  const btn = document.getElementById('run-checks-btn');
+  btn.disabled = true;
+  btn.textContent = 'Checking…';
+  try {
+    const tolerance = parseFloat(document.getElementById('mz-tolerance').value) || 0.5;
+
+    // Build { ms1_name: [msms_name, ...] } from table rows (skip empty cells)
+    const pairs = {};
+    data.rows.forEach(row => {
+      pairs[row[0]] = row.slice(1).filter(Boolean);
+    });
+
+    pyodide.globals.set('_check_pairs',     pyodide.toPy(pairs));
+    pyodide.globals.set('_check_tolerance', tolerance);
+
+    const jsonStr = await pyodide.runPythonAsync(`
+import json, bisect
+import pyteomics.mzml as pymzml
+
+pairs     = dict(_check_pairs)
+tolerance = float(_check_tolerance)
+
+def mz_present(mz, sorted_mzs):
+    lo = bisect.bisect_left(sorted_mzs, mz - tolerance)
+    return lo < len(sorted_mzs) and sorted_mzs[lo] <= mz + tolerance
+
+results = {}
+for ms1_name, msms_names in pairs.items():
+    ms1_mzs = []
+    try:
+        with pymzml.MzML('/tmp/' + ms1_name) as f:
+            for scan in f:
+                if scan.get('ms level') == 1:
+                    arr = scan.get('m/z array')
+                    if arr is not None:
+                        ms1_mzs.extend(arr.tolist())
+    except Exception as e:
+        results[ms1_name] = {'error': str(e), 'msms': {}}
+        continue
+    ms1_mzs_sorted = sorted(ms1_mzs)
+
+    msms_results = {}
+    for msms_name in msms_names:
+        found, missing = [], []
+        try:
+            with pymzml.MzML('/tmp/' + msms_name) as f:
+                for scan in f:
+                    if scan.get('ms level') == 2:
+                        for prec in scan.get('precursorList', {}).get('precursor', []):
+                            for ion in prec.get('selectedIonList', {}).get('selectedIon', []):
+                                mz = ion.get('selected ion m/z')
+                                if mz is not None:
+                                    mz = float(mz)
+                                    if mz_present(mz, ms1_mzs_sorted):
+                                        found.append(round(mz, 4))
+                                    else:
+                                        missing.append(round(mz, 4))
+        except Exception as e:
+            msms_results[msms_name] = {'error': str(e), 'pass': False, 'found': [], 'missing': []}
+            continue
+        total = len(found) + len(missing)
+        msms_results[msms_name] = {
+            'pass':    total > 0 and len(missing) == 0,
+            'found':   found,
+            'missing': missing,
+        }
+    results[ms1_name] = {'msms': msms_results}
+json.dumps(results)
+`);
+
+    checkResults = JSON.parse(jsonStr);
+    applyChipCheckHighlighting();
+    renderChecksReport();
+  } catch (err) {
+    alert('Check error: ' + err.message);
+    console.error(err);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Run Checks';
+  }
+});
+
+function applyChipCheckHighlighting() {
+  const tol = document.getElementById('mz-tolerance').value;
+
+  document.querySelectorAll('.msms-chip[data-msms-name]').forEach(chip => {
+    chip.classList.remove('check-pass', 'check-fail');
+
+    const msmsName = chip.dataset.msmsName;
+    const section = chip.closest('.chip-dropzone');
+    if (!section) return;
+
+    const target = section.dataset.targetSection;
+    if (target === '__UNMATCHED__') {
+      chip.title = 'Unmatched file';
+      return;
+    }
+
+    const res = checkResults && checkResults[target] && checkResults[target].msms
+      ? checkResults[target].msms[msmsName]
+      : null;
+
+    if (!res) return;
+
+    if (res.error) {
+      chip.classList.add('check-fail');
+      chip.title = `Error: ${res.error}`;
+    } else if (res.pass) {
+      chip.classList.add('check-pass');
+      chip.title = `All ${res.found.length} selected ion(s) found in MS1 (±${tol} Da)`;
+    } else {
+      chip.classList.add('check-fail');
+      const miss = res.missing.slice(0, 5).join(', ') + (res.missing.length > 5 ? '…' : '');
+      chip.title = `${res.missing.length} ion(s) not in MS1: ${miss}`;
+    }
+  });
+}
+
+function renderChecksReport() {
+  const container = document.getElementById('checks-report-container');
+  const accordion = document.getElementById('checks-report');
+  const summary   = document.getElementById('checks-summary');
+  const tol       = document.getElementById('mz-tolerance').value;
+
+  let totalPass = 0, totalFail = 0;
+  accordion.innerHTML = '';
+
+  Object.entries(checkResults).forEach(([ms1Name, ms1Result], idx) => {
+    if (ms1Result.error) {
+      totalFail++;
+      accordion.innerHTML += buildAccordionItem(idx, ms1Name,
+        `<span class="text-danger">Error reading file: ${escapeHtml(ms1Result.error)}</span>`,
+        true);
+      return;
+    }
+    const entries   = Object.entries(ms1Result.msms || {});
+    const failCount = entries.filter(([, r]) => !r.pass).length;
+    const passCount = entries.filter(([, r]) =>  r.pass).length;
+    totalPass += passCount;
+    totalFail += failCount;
+
+    const badge = failCount > 0
+      ? `<span class="badge bg-danger ms-2">${failCount} failed</span>`
+      : (entries.length > 0 ? `<span class="badge bg-success ms-2">all passed</span>` : '');
+
+    const rows = entries.map(([msmsName, res]) => {
+      if (res.error) {
+        return `<tr><td class="text-warning">⚠ ${escapeHtml(msmsName)}</td><td class="text-warning small">Error: ${escapeHtml(res.error)}</td></tr>`;
+      }
+      const cls    = res.pass ? 'check-detail-pass' : 'check-detail-fail';
+      const icon   = res.pass ? '✓' : '✗';
+      let detail;
+      if (res.pass) {
+        detail = `All ${res.found.length} selected ion(s) found in MS1`;
+      } else {
+        const missStr = res.missing.slice(0, 10).join(', ') + (res.missing.length > 10 ? '…' : '');
+        detail = `${res.missing.length} ion(s) not found: ${missStr}`;
+        if (res.found.length) detail += ` | ${res.found.length} found`;
+      }
+      return `<tr><td class="${cls}">${icon} ${escapeHtml(msmsName)}</td><td class="${cls} small">${detail}</td></tr>`;
+    }).join('');
+
+    const body = `<table class="table table-sm mb-0">
+      <thead><tr><th>MS/MS File</th><th>Selected Ion Check (±${tol} Da)</th></tr></thead>
+      <tbody>${rows}</tbody></table>`;
+
+    accordion.innerHTML += buildAccordionItem(idx, `${escapeHtml(ms1Name)} ${badge}`, body, failCount > 0);
+  });
+
+  summary.textContent = `±${tol} Da tolerance — ${totalPass} MS/MS file(s) passed, ${totalFail} failed.`;
+  container.style.display = 'block';
+  container.scrollIntoView({ behavior: 'smooth' });
+}
+
+function buildAccordionItem(idx, headerHtml, bodyHtml, expanded) {
+  const bodyId = `ck-body-${idx}`;
+  return `<div class="accordion-item">
+    <h2 class="accordion-header">
+      <button class="accordion-button ${expanded ? '' : 'collapsed'}" type="button"
+              data-bs-toggle="collapse" data-bs-target="#${bodyId}">
+        ${headerHtml}
+      </button>
+    </h2>
+    <div id="${bodyId}" class="accordion-collapse collapse ${expanded ? 'show' : ''}">
+      <div class="accordion-body p-2">${bodyHtml}</div>
+    </div>
+  </div>`;
+}
+
+function escapeHtml(str) {
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+</script>
+</body>
+</html>

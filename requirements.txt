@@ -28,3 +28,4 @@ psims
 scipy==1.15.0
 tenacity
 pyyaml
+setuptools==81.0.0
