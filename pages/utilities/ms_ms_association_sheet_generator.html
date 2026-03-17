@@ -956,6 +956,79 @@ def sanitize_filename(name):
 def write_group_mzml(ms1_name, msms_names):
   spectra = []
 
+  def to_float(value):
+    if value is None:
+      return None
+    try:
+      return float(value)
+    except Exception:
+      return None
+
+  def extract_precursor_information(scan):
+    precursor_list = scan.get('precursorList', {}) or {}
+    if not hasattr(precursor_list, 'get'):
+      return None
+
+    precursors = precursor_list.get('precursor', []) or []
+    output = []
+
+    for precursor in precursors:
+      if not hasattr(precursor, 'get'):
+        continue
+
+      info = {}
+
+      selected_ions = precursor.get('selectedIonList', {})
+      selected_ions = selected_ions.get('selectedIon', []) if hasattr(selected_ions, 'get') else []
+      if selected_ions:
+        ion = selected_ions[0]
+        if hasattr(ion, 'get'):
+          selected_mz = to_float(ion.get('selected ion m/z'))
+          if selected_mz is not None:
+            info['selected_ion_mz'] = selected_mz
+
+      isolation_window = precursor.get('isolationWindow', {})
+      if hasattr(isolation_window, 'get'):
+        target = to_float(isolation_window.get('isolation window target m/z'))
+        lower = to_float(isolation_window.get('isolation window lower offset'))
+        upper = to_float(isolation_window.get('isolation window upper offset'))
+
+        if any(v is not None for v in (target, lower, upper)):
+          iso = {}
+          if target is not None:
+            iso['target'] = target
+          if lower is not None:
+            iso['lower'] = lower
+          if upper is not None:
+            iso['upper'] = upper
+          info['isolation_window'] = iso
+
+      activation = precursor.get('activation', {})
+      if hasattr(activation, 'get'):
+        activation_params = []
+        collision_energy = to_float(activation.get('collision energy'))
+
+        for key, value in activation.items():
+          if key in ('collision energy', 'params', 'count'):
+            continue
+          if value is True or value == '':
+            activation_params.append(key)
+
+        if collision_energy is not None:
+          activation_params.append({
+            'name': 'collision energy',
+            'value': collision_energy,
+            'unit_name': 'electronvolt',
+          })
+
+        if activation_params:
+          info['activation'] = activation_params
+
+      if info:
+        output.append(info)
+
+    return output or None
+
   def collect_scans(filename, fallback_ms_level):
     with pymzml.MzML('/tmp/' + filename) as reader:
       for scan in reader:
@@ -980,7 +1053,14 @@ def write_group_mzml(ms1_name, msms_names):
         except Exception:
           intensity_array = list(intensity_values)
 
-        spectra.append((ms_level, mz_array, intensity_array))
+        precursor_information = extract_precursor_information(scan) if ms_level > 1 else None
+
+        spectra.append({
+          'ms_level': ms_level,
+          'mz_array': mz_array,
+          'intensity_array': intensity_array,
+          'precursor_information': precursor_information,
+        })
 
   collect_scans(ms1_name, 1)
   for msms_name in msms_names:
@@ -992,7 +1072,11 @@ def write_group_mzml(ms1_name, msms_names):
     scan_counter = 1
     with out_mzml.run(id='my_analysis'):
       with out_mzml.spectrum_list(count=len(spectra)):
-        for ms_level, mz_array, intensity_array in spectra:
+        for spectrum in spectra:
+          ms_level = spectrum['ms_level']
+          mz_array = spectrum['mz_array']
+          intensity_array = spectrum['intensity_array']
+
           out_mzml.write_spectrum(
             mz_array,
             intensity_array,
@@ -1003,6 +1087,7 @@ def write_group_mzml(ms1_name, msms_names):
               {'total ion current': float(sum(intensity_array))},
               {'instrument model': 'unknown'},
             ],
+            precursor_information=spectrum['precursor_information'],
           )
           scan_counter += 1
 
