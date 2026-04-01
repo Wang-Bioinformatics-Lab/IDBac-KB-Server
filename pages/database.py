@@ -15,6 +15,7 @@ import dash
 from dash import html, register_page  #, callback # If you need callbacks, import it here.
 
 from data_loader import load_database
+from utils import get_raw_mzml_bytes, get_filtered_mzml_bytes
 
 # from app import server
 # memory_cache = Cache(config={
@@ -525,14 +526,14 @@ def update_dynamic_pie_chart(selected_taxonomy):
 )
 def download_binned(n_clicks, bin_width, table_data, table_selected):
     if n_clicks is None or table_selected is None or len(table_selected) == 0:
-        return None
+        return dash.no_update
     
     # Get the selected row data
     selected_row = table_data[table_selected[0]]
     database_id = selected_row["database_id"]
     
-    return {'content': f"/api/spectrum/mzml-filtered?database_id={database_id}&bin_width={bin_width}",
-            'filename': "binned_spectra.mzML"}
+    mzml_bytes = get_filtered_mzml_bytes(database_id, bin_width)
+    return dcc.send_bytes(mzml_bytes.getvalue(), filename=f"{database_id}.mzML")
 
 @callback(
     Output('download-raw-mzml', 'data'),
@@ -541,19 +542,15 @@ def download_binned(n_clicks, bin_width, table_data, table_selected):
     State('displaytable', 'derived_virtual_selected_rows'),
 )
 def download_raw(n_clicks, table_data, table_selected):
-    # Check if button was clicked and if a row is selected
     if n_clicks is None or table_selected is None or len(table_selected) == 0:
-        return None  # No download action
+        return dash.no_update
     
     # Get the selected row data
     selected_row = table_data[table_selected[0]]
     database_id = selected_row["database_id"]
 
-    # Return the download details
-    return {
-        'content': f"/api/spectrum/mzml-raw?database_id={database_id}",
-        'filename': "raw_spectra.mzML"
-    }
+    mzml_bytes = get_raw_mzml_bytes(database_id)
+    return dcc.send_bytes(mzml_bytes.getvalue(), filename=f"{database_id}.mzML")
 
 
 # Callback to update visibility based on table selection

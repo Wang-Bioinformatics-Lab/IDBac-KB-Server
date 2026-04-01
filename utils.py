@@ -5,6 +5,7 @@ import numpy as np
 import pandas as pd
 import requests
 import json
+import glob
 from requests_cache import Path
 from psims.mzml.writer import MzMLWriter
 import xmltodict
@@ -484,6 +485,128 @@ def generate_tree(taxid_list):
     else:
         tree.write(format=0, outfile="/app/assets/tree.nwk")
 
+def convert_binned_to_mzml(json_run:Path):
+    """Converts a binned json run to an mzML file using psims. Returns in a BytesIO object.
+
+    Args:
+        json_run (Path): The path to the binned json run file.
+    Returns:
+        BytesIO: The mzML file as a BytesIO object.
+    """
+    json_run = Path(str(json_run))
+    if not json_run.exists():
+        raise FileNotFoundError(f"File {json_run} not found")
+
+    output_bytes = BytesIO()
+
+    with open(json_run, 'r') as file_handle:
+        run_dict = json.load(file_handle)
+
+        other_keys = set(list(run_dict.keys()))
+        if "peaks" in other_keys:
+            other_keys.remove("peaks")
+        other_keys = sorted(list(other_keys))
+
+        with MzMLWriter(output_bytes, close=False) as out:
+            out.controlled_vocabularies()
+
+            # Write the metadata as user parameters
+            
+            params = {}
+            params['id'] = 'global_metadata'
+            for key in other_keys:
+                params[f'_{key}'] = run_dict[key] # Prevent resolutions for existing
+
+            out.reference_param_group_list([
+                params
+            ])
+               
+            with out.run(id="idbac_download"):
+                with out.spectrum_list(count=1):
+                    scan = 1
+                    mz_array = []
+                    intensity_array = []
+                    for d in run_dict["peaks"]:
+                        mz_array.append(d["mz"])
+                        intensity_array.append(d["i"])
+
+                    out.write_spectrum(
+                        mz_array, intensity_array,
+                        id="scan={}".format(scan),
+                        params=[
+                            "MS1 Spectrum",
+                            {"ms level": 1},
+                            {"total ion current": sum(intensity_array)}
+                        ])
+                    scan += 1
+
+
+    return output_bytes
+
+def get_raw_spectrum_file(database_id:str):
+    """Resolve a raw spectrum json path from database_id.
+
+    Args:
+        database_id (str): The spectrum database id.
+
+    Returns:
+        str: Absolute or relative path to the resolved json file.
+    """
+    if not database_id:
+        raise ValueError("Database ID is required")
+
+    database_files = glob.glob(
+        f"database/depositions/**/{os.path.basename(database_id)}.json",
+        recursive=True,
+    )
+
+    if len(database_files) == 0:
+        raise FileNotFoundError("File not found")
+    if len(database_files) > 1:
+        raise RuntimeError("Multiple files found")
+
+    return database_files[0]
+
+def get_filtered_spectrum_file(database_id:str, bin_width:int=10):
+    """Resolve a filtered spectrum json path from database_id and bin width.
+
+    Args:
+        database_id (str): The spectrum database id.
+        bin_width (int): Binning width in Da.
+
+    Returns:
+        str: Absolute path to the resolved filtered json file.
+    """
+    if not database_id:
+        raise ValueError("Database ID is required")
+
+    if dev_mode:
+        base_dir = "workflows/idbac_summarize_database/nf_output"
+    else:
+        base_dir = "/app/workflows/idbac_summarize_database/nf_output"
+
+    database_files = glob.glob(
+        f"{base_dir}/{str(bin_width)}_da_bin/output_spectra_json/**/{os.path.basename(database_id)}.json",
+        recursive=True,
+    )
+
+    if len(database_files) == 0:
+        raise FileNotFoundError("File not found")
+    if len(database_files) > 1:
+        raise RuntimeError("Multiple files found")
+
+    return database_files[0]
+
+def get_raw_mzml_bytes(database_id:str):
+    """Create mzML bytes for a raw spectrum by database_id."""
+    json_path = get_raw_spectrum_file(database_id)
+    return convert_to_mzml(json_path)
+
+def get_filtered_mzml_bytes(database_id:str, bin_width:int=10):
+    """Create mzML bytes for a filtered spectrum by database_id and bin width."""
+    json_path = get_filtered_spectrum_file(database_id, bin_width)
+    return convert_binned_to_mzml(json_path)
+
 def convert_to_mzml(json_run:Path):
     """Converts a json run to an mzML file using psims. Returns in a BytesIO object.
 
@@ -504,7 +627,8 @@ def convert_to_mzml(json_run:Path):
         run_dict = json.load(file_handle)
 
         other_keys = set(list(run_dict.keys()))
-        other_keys.remove("spectrum")
+        if "spectrum" in other_keys:
+            other_keys.remove("spectrum")
         other_keys = sorted(list(other_keys))
 
         with MzMLWriter(output_bytes, close=False) as out:

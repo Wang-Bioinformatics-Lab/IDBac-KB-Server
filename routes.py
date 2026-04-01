@@ -10,7 +10,7 @@ import yaml
 
 
 import tasks
-from utils import convert_to_mzml
+from utils import get_raw_mzml_bytes, get_filtered_mzml_bytes, get_filtered_spectrum_file
 
 from flask import Blueprint
 api_blueprint = Blueprint('api_blueprint', __name__)
@@ -97,17 +97,12 @@ def download_mzml_raw():
     if not database_id:
         return "Database ID is required", 400
 
-    # Find the corresponding JSON file for the database ID
-    database_files = glob.glob(f"database/depositions/**/{os.path.basename(database_id)}.json")
-
-    if len(database_files) == 0:
+    try:
+        mzml_bytes = get_raw_mzml_bytes(database_id)
+    except FileNotFoundError:
         return "File not found", 404
-
-    if len(database_files) > 1:
+    except RuntimeError:
         return "Multiple files found", 500
-    
-    # Convert the file to mzML format
-    mzml_bytes = convert_to_mzml(database_files[0])
 
     # Return the mzML bytes as a downloadable file
     mzml_bytes.seek(0)
@@ -124,17 +119,12 @@ def download_mzml_filtered():
     database_id = request.values.get("database_id")
     bin_width   = request.values.get("bin_width", 10)
 
-    # Finding all the database files
-    database_files = f"/app/workflows/idbac_summarize_database/nf_output/{str(bin_width)}_da_bin/output_spectra_json/**/{os.path.basename(database_id)}.json"
-
-    if len(database_files) == 0:
+    try:
+        mzml_bytes = get_filtered_mzml_bytes(database_id, bin_width)
+    except FileNotFoundError:
         return "File not found", 404
-    
-    if len(database_files) > 1:
+    except RuntimeError:
         return "Multiple files found", 500
-    
-    # Get the file and convert to mzML
-    mzml_bytes  = convert_to_mzml(database_files[0])
 
     # Return bytes as file
     mzml_bytes.seek(0)
@@ -158,16 +148,14 @@ def filtered_spectra():
         else:
             return send_from_directory(f"/app/workflows/idbac_summarize_database/nf_output/{str(bin_width)}_da_bin/", "output_merged_spectra.json")
 
-    # Finding all the database files
-    database_files = glob.glob(f"/app/workflows/idbac_summarize_database/nf_output/{str(bin_width)}_da_bin/output_spectra_json/**/{os.path.basename(database_id)}.json")
-
-    if len(database_files) == 0:
+    try:
+        filtered_file = get_filtered_spectrum_file(database_id, bin_width)
+    except FileNotFoundError:
         return "File not found", 404
-    
-    if len(database_files) > 1:
+    except RuntimeError:
         return "Multiple files found", 500
-    
-    return send_from_directory(os.path.dirname(database_files[0]), os.path.basename(database_files[0]))
+
+    return send_from_directory(os.path.dirname(filtered_file), os.path.basename(filtered_file))
 
 @api_blueprint.route("/api/spectrum/ml_db", methods=["GET"])
 def ml_db():    # http://localhost:5392/api/spectrum/ml_db
