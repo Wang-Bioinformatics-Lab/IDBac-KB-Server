@@ -17,6 +17,7 @@ from collections import defaultdict
 import math
 import json5
 import json
+import pickle
 from typing import List
 import re
 from multiprocessing import Pool
@@ -52,11 +53,6 @@ def process_line(line_output):
         with writer.run(id='my_analysis'):
             with writer.spectrum_list(count=len(all_scans)):
                 for scan_idx, scan in enumerate(all_scans):
-                    # If the length of the scan is 0, print it
-                    if len(scan) == 0:
-                        logging.warning(f"Scan {scan_idx} in {db_id} is empty after processing.")
-                        continue
-
                     mz_array, intensity_array = zip(*scan)
                     writer.write_spectrum(
                         mz_array,
@@ -109,6 +105,9 @@ def process_with_maldi_quant(script_path, input_path: Path, output_path: Path, n
 
 #################### Novel Stuff ####################
 def convert_to_tensors(path: Path, output_dir: Path):
+    """Converts a .mzML file to a tensor by averaging all scans together.
+    
+    """
     all_spectrum_paths = list(path.glob("*.mzML"))
     logging.info(f"Found {len(all_spectrum_paths)} mzML files in {path}")
     
@@ -117,7 +116,7 @@ def convert_to_tensors(path: Path, output_dir: Path):
         output_dir.mkdir(parents=True, exist_ok=True)
     
     for spectrum_path in tqdm(all_spectrum_paths, desc="Converting to NPY"):
-        output_path = output_dir/ f"{spectrum_path.stem}.npy"
+        output_path = output_dir/ f"{spectrum_path.stem}.pkl"
 
         mzml_file = mzml.read(str(spectrum_path))
         # Average the scans
@@ -135,33 +134,73 @@ def convert_to_tensors(path: Path, output_dir: Path):
             output_intensity_array.append(spectrum_dict[mz] / num_scans)
 
         logging.info(f"Writing {spectrum_path.stem} to {output_path}")
-        np.save(output_path, np.stack((np.array(output_mz_array), np.array(output_intensity_array))), allow_pickle=False)
+        pickle.dump(np.stack((np.array(output_mz_array), np.array(output_intensity_array))), open(output_path, 'wb'))
+
+def convert_to_tensors_multi_scan(path: Path, output_dir: Path):
+    """Converts a .mzML file with multiple scans to a list of tensors, one per scan
+    """
+    all_spectrum_paths = list(path.glob("*.mzML"))
+    logging.info(f"Found {len(all_spectrum_paths)} mzML files in {path}")
+    
+
+    if not output_dir.exists():
+        output_dir.mkdir(parents=True, exist_ok=True)
+    
+    for spectrum_path in tqdm(all_spectrum_paths, desc="Converting to NPY"):
+        output_path = output_dir/ f"{spectrum_path.stem}.pkl"
+
+        mzml_file = mzml.read(str(spectrum_path))
+        all_scans = []
+        for scan in mzml_file:
+            all_scans.append(np.stack((scan["m/z array"], scan["intensity array"])))
+
+        logging.info(f"Writing {spectrum_path.stem} to {output_path}")
+        pickle.dump(all_scans, open(output_path, 'wb'))
+
 def main():
     parser = argparse.ArgumentParser(description="Preprocess data for ML inference.")
-    parser.add_argument("--input_json", help="Path to the input DB JSON file", required=True)
+    parser.add_argument("--input_json", help="Path to the input DB JSON file", required=False)
+    parser.add_argument("--input_mzml", help="Path to the input mzML files", required=False)
     parser.add_argument("--output_dir", help="Directory to save the preprocessed data", required=True)
     parser.add_argument("--debug", action="store_true", help="Enable debug mode for additional logging")
     parser.add_argument("--rscript", help="Path to the R script for preprocessing", required=True)
     args = parser.parse_args()
+
+    if not args.input_json and not args.input_mzml:
+        raise ValueError("You must specify either --input_json or --input_mzml")
+    if args.input_json and args.input_mzml:
+        raise ValueError("You cannot specify both --input_json and --input_mzml. Please choose one.")
 
     logging.basicConfig(level=logging.INFO)
 
     for arg in vars(args):
         logging.info("%s: %s", arg, getattr(args, arg))
 
-    input_json = Path(args.input_json)
+    if args.input_json:
+        input_json = Path(args.input_json)
+    else:
+        input_json = None
+    if args.input_mzml:
+        input_mzml = Path(args.input_mzml)
+    else:
+        input_mzml = None
     output_dir = Path(args.output_dir)
+
+    global TEMP_MZML_DIR
 
     TEMP_MZML_DIR.mkdir(parents=True, exist_ok=True)
     INTERMEDIATE_MZML_DIR.mkdir(parents=True, exist_ok=True)
     
 
-    if not input_json.exists():
+    if input_json and not input_json.exists():
         raise ValueError(f"Input JSON file does not exist: {input_json}")
     if not output_dir.exists():
         output_dir.mkdir(parents=True, exist_ok=True)
 
-    write_mzML_files_from_json(input_json, TEMP_MZML_DIR)
+    if args.input_json:
+        write_mzML_files_from_json(input_json, TEMP_MZML_DIR)
+    else:
+        TEMP_MZML_DIR = input_mzml
 
     if args.debug:
         # Set logging level to DEBUG
@@ -170,7 +209,7 @@ def main():
     process_with_maldi_quant(args.rscript, TEMP_MZML_DIR, INTERMEDIATE_MZML_DIR, n_jobs=-1 if not args.debug else 1)
 
     # Write to npy
-    convert_to_tensors(INTERMEDIATE_MZML_DIR, output_dir)
+    convert_to_tensors_multi_scan(INTERMEDIATE_MZML_DIR, output_dir)
 
 
 
