@@ -43,7 +43,7 @@ def run_inference(ml_data_directory: Path, output_file: Path, session: ort.Infer
         # Average the embeddings across scans
         averaged_output = np.mean(embedded_scans, axis=0)
 
-        outputs[output_name] = averaged_output
+        outputs[db_id] = averaged_output
 
 
     print(outputs)
