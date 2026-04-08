@@ -1,7 +1,7 @@
 import dash
 from dotenv import dotenv_values
 from flask import request
-from flask import send_from_directory, send_file
+from flask import send_from_directory, send_file, redirect
 import glob
 import json
 import pandas as pd
@@ -9,6 +9,7 @@ import os
 import yaml
 
 
+import requests as http_requests
 import tasks
 from utils import get_raw_mzml_bytes, get_filtered_mzml_bytes, get_filtered_spectrum_file
 
@@ -263,6 +264,37 @@ def download_tree_svg():
         else:
             return "No Image Found", 404
     
+BGC_EXPLORER_STATIC = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'BGC_Explorer', 'bgc_explorer', 'static')
+BGC_EXPLORER_API = f"http://bgc-explorer:{os.environ.get('BGC_EXPLORER_PORT', '8080')}"
+
+@api_blueprint.route("/bgc_explorer")
+def bgc_explorer_redirect():
+    return redirect('/bgc_explorer/')
+
+@api_blueprint.route("/bgc_explorer/")
+def bgc_explorer_index():
+    return send_from_directory(BGC_EXPLORER_STATIC, 'index.html')
+
+@api_blueprint.route("/bgc_explorer/<path:filepath>")
+def bgc_explorer_static(filepath):
+    return send_from_directory(BGC_EXPLORER_STATIC, filepath)
+
+@api_blueprint.route("/bgc_explorer/api/<path:endpoint>", methods=["POST", "OPTIONS"])
+def bgc_explorer_api(endpoint):
+    if request.method == "OPTIONS":
+        return "", 200
+    resp = http_requests.post(
+        f"{BGC_EXPLORER_API}/api/{endpoint}",
+        json=request.get_json(silent=True),
+        timeout=(5, 1800)
+    )
+    return resp.content, resp.status_code, {'Content-Type': resp.headers.get('Content-Type', 'application/json')}
+
+@api_blueprint.route("/bgc_explorer/data/<path:filepath>")
+def bgc_explorer_data(filepath):
+    resp = http_requests.get(f"{BGC_EXPLORER_API}/data/{filepath}", timeout=30)
+    return resp.content, resp.status_code, {'Content-Type': resp.headers.get('Content-Type', 'application/json')}
+
 @api_blueprint.route("/download_tree_nwk", methods=["GET"])
 def download_tree_nwk():
     if dev_mode:

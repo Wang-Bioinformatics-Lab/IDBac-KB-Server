@@ -1,0 +1,3 @@
+[submodule "BGC_Explorer"]
+	path = BGC_Explorer
+	url = https://github.com/Michael-C-Strobel/BGC_Explorer.git
