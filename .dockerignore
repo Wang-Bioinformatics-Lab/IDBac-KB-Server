@@ -3,3 +3,4 @@ workflows
 conda_env
 venv
 scratch
+BGC_Explorer/bgc_explorer/data
