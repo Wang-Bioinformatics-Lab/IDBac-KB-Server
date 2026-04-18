@@ -652,6 +652,9 @@ def convert_to_mzml(json_run:Path):
                         mz_array = [x[0] for x in spectrum]
                         intensity_array = [x[1] for x in spectrum]
 
+                        # Ensure peaks are sorted
+                        mz_array, intensity_array = zip(*sorted(zip(mz_array, intensity_array)))
+
                         out.write_spectrum(
                             mz_array, intensity_array,
                             id="scan={}".format(scan),
