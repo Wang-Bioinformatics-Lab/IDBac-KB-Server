@@ -151,7 +151,7 @@ def task_summarize_depositions():
     # Save summary statistics
     summary_statistics = {
         "num_entries": len(df),
-        "num_genera": len(df["genus"].unique())
+        "num_genera": len(set(df["genus"].unique()) | set(df["16S Taxonomy"].str.split().str[0].unique())),
     }
     with open("database/summary_statistics.json", "w") as f:
         f.write(json.dumps(summary_statistics))
