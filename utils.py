@@ -607,6 +607,52 @@ def get_filtered_mzml_bytes(database_id:str, bin_width:int=10):
     json_path = get_filtered_spectrum_file(database_id, bin_width)
     return convert_binned_to_mzml(json_path)
 
+def convert_binned_to_mgf(json_run:Path, title:str=""):
+    """Converts a binned json run to a single-scan MGF file.
+
+    Args:
+        json_run (Path): The path to the binned json run file.
+        title (str): Optional TITLE line value.
+
+    Returns:
+        BytesIO: The MGF file as a BytesIO object.
+    """
+    json_run = Path(str(json_run))
+    if not json_run.exists():
+        raise FileNotFoundError(f"File {json_run} not found")
+
+    with open(json_run, 'r') as file_handle:
+        run_dict = json.load(file_handle)
+
+    peaks = run_dict.get("peaks", [])
+    peaks = sorted(peaks, key=lambda d: d.get("mz", 0))
+
+    lines = [
+        "BEGIN IONS",
+        "",
+        f"TITLE={title}",
+        "CHARGE=0",
+        "MSLEVEL=1",
+        "SEQ=*..*",
+        "SCANS=1",
+    ]
+
+    for peak in peaks:
+        mz = float(peak.get("mz", 0.0))
+        intensity = float(peak.get("i", 0.0))
+        lines.append(f"{mz:.6f}  {intensity:.1f}")
+
+    lines.append("END IONS")
+    lines.append("")
+
+    output_bytes = BytesIO("\n".join(lines).encode("utf-8"))
+    return output_bytes
+
+def get_filtered_mgf_bytes(database_id:str, bin_width:int=10):
+    """Create MGF bytes for a filtered spectrum by database_id and bin width."""
+    json_path = get_filtered_spectrum_file(database_id, bin_width)
+    return convert_binned_to_mgf(json_path, title=database_id)
+
 def convert_to_mzml(json_run:Path):
     """Converts a json run to an mzML file using psims. Returns in a BytesIO object.
 

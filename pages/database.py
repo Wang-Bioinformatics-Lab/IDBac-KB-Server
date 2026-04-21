@@ -15,7 +15,7 @@ import dash
 from dash import html, register_page  #, callback # If you need callbacks, import it here.
 
 from data_loader import load_database
-from utils import get_raw_mzml_bytes, get_filtered_mzml_bytes
+from utils import get_raw_mzml_bytes, get_filtered_mzml_bytes, get_filtered_mgf_bytes
 
 # from app import server
 # memory_cache = Cache(config={
@@ -157,6 +157,7 @@ MIDDLE_DASHBOARD = [
                     dbc.ButtonGroup(
                         [
                             dbc.Button("Download Binned", color="primary", id="download-binned-spectra"),
+                            dbc.Button("Download Binned as MGF", color="primary", id="download-binned-mgf-spectra"),
                             dbc.Button("Download Raw", color="primary", id="download-raw-spectra"),
                             dbc.Button("View Raw", color="primary", id="view-raw-spectra", href=""),
                         ],
@@ -169,6 +170,7 @@ MIDDLE_DASHBOARD = [
             ),
             dcc.Download(id="download-raw-mzml"),
             dcc.Download(id="download-binned-mzml"),
+            dcc.Download(id="download-binned-mgf"),
         ]
     )
 ]
@@ -534,6 +536,23 @@ def download_binned(n_clicks, bin_width, table_data, table_selected):
     
     mzml_bytes = get_filtered_mzml_bytes(database_id, bin_width)
     return dcc.send_bytes(mzml_bytes.getvalue(), filename=f"{database_id}.mzML")
+
+@callback(
+    Output('download-binned-mgf', 'data'),
+    Input('download-binned-mgf-spectra', 'n_clicks'),
+    State('spectra-bin-size', 'value'),
+    State('displaytable', 'derived_virtual_data'),
+    State('displaytable', 'derived_virtual_selected_rows'),
+)
+def download_binned_mgf(n_clicks, bin_width, table_data, table_selected):
+    if n_clicks is None or table_selected is None or len(table_selected) == 0:
+        return dash.no_update
+
+    selected_row = table_data[table_selected[0]]
+    database_id = selected_row["database_id"]
+
+    mgf_bytes = get_filtered_mgf_bytes(database_id, bin_width)
+    return dcc.send_bytes(mgf_bytes.getvalue(), filename=f"{database_id}.mgf")
 
 @callback(
     Output('download-raw-mzml', 'data'),
