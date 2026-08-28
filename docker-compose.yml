@@ -1,4 +1,11 @@
 version: '3'
+
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
 services:
   idbac-kb-dash:
     build:
@@ -23,9 +30,7 @@ services:
       LETSENCRYPT_HOST: idbac.org
       LETSENCRYPT_EMAIL: mwang87@gmail.com
       BGC_EXPLORER_PORT: 8080
-    logging:
-      options:
-        max-size: 50m
+    logging: *default-logging
 
   idbac-kb-worker:
     build:
@@ -45,9 +50,7 @@ services:
     networks:
       - default
       - nginx-net
-    logging:
-      options:
-        max-size: 50m
+    logging: *default-logging
 
   idbac-kb-depositionworker:
     build:
@@ -70,9 +73,7 @@ services:
       resources:
         limits:
           memory: 25g
-    logging:
-      options:
-        max-size: 50m
+    logging: *default-logging
 
   bgc-explorer:
     build:
@@ -88,9 +89,7 @@ services:
     networks:
       - default
     restart: unless-stopped
-    logging:
-      options:
-        max-size: 50m
+    logging: *default-logging
 
   idbac-kb-rabbitmq:
     container_name: idbac-kb-rabbitmq
@@ -98,6 +97,7 @@ services:
     restart: unless-stopped
     networks:
       - default
+    logging: *default-logging
 
   idbac-kb-redis:
     container_name: idbac-kb-redis
@@ -105,9 +105,7 @@ services:
     restart: unless-stopped
     networks:
       - default
-    logging:
-      options:
-        max-size: 50m
+    logging: *default-logging
 
 
 networks:
